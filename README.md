@@ -1,7 +1,7 @@
-##🐻 Goldilocks
+# Goldilocks
 ### Pipeline Intelligence Platform
 
-> *Just love your CURLs.*
+> *Love your CURLs.*
 
 Goldilocks is a pipeline intelligence platform for **SnapLogic** integration environments. It parses, maps and monitors data pipelines — transforming raw JSON pipeline exports into a living **Neo4j graph database** that reveals how your data actually flows.
 
@@ -40,24 +40,6 @@ SnapLogic Export (JSON)
         │
         ▼
     Neo4j Aura 🌐          ← Live graph database
-```
-
----
-
-## 🚀 Quick start
-
-```bash
-pip install goldilocks
-goldilocks
-```
-
-Or clone and run locally:
-
-```bash
-git clone https://github.com/Helene-Garance-Martin/goldilocks.git
-cd goldilocks
-pip install -r requirements.txt
-python pie.py
 ```
 
 ---
@@ -103,4 +85,4 @@ Folkestone, UK 🇫🇷🇬🇧
 
 ---
 
-*Named after Goldilocks — because good pipeline architecture is about finding what's just right.* 🐻
+
