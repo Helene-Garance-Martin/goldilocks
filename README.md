@@ -1,2 +1,106 @@
-# goldilocks
-Pipeline intelligence platform for SnapLogic — parses, visualises and monitors integration pipelines
+##🐻 Goldilocks
+### Pipeline Intelligence Platform
+
+> *Just love your CURLs.*
+
+Goldilocks is a pipeline intelligence platform for **SnapLogic** integration environments. It parses, maps and monitors data pipelines — transforming raw JSON pipeline exports into a living **Neo4j graph database** that reveals how your data actually flows.
+
+---
+
+## ✨ What it does
+
+- **Parses** SnapLogic pipeline exports (`.slp` / JSON) into structured graph data
+- **Maps** pipeline relationships — snaps, dependencies, connections — into **Neo4j**
+- **Generates** visual diagrams of pipeline architecture (Mermaid `.mmd`)
+- **Monitors** pipeline health and complexity patterns
+- **Anonymises** sensitive environment data for safe sharing and auditing
+- *(Coming soon)* **AI agent layer** for natural language pipeline querying
+
+---
+
+## 🏗️ Architecture
+
+```
+SnapLogic Export (JSON)
+        │
+        ▼
+  json_parser.py          ← Parses raw pipeline structure
+        │
+        ▼
+  file_processor.py       ← Cleans, validates, prepares data
+        │
+        ▼
+  goldilocks_seed.py      ← Seeds Neo4j graph database
+        │
+        ▼
+  database_connector.py   ← Neo4j Aura connection layer
+        │
+        ▼
+  diagram_generator.py    ← Generates Mermaid architecture diagrams
+        │
+        ▼
+    Neo4j Aura 🌐          ← Live graph database
+```
+
+---
+
+## 🚀 Quick start
+
+```bash
+pip install goldilocks
+goldilocks
+```
+
+Or clone and run locally:
+
+```bash
+git clone https://github.com/Helene-Garance-Martin/goldilocks.git
+cd goldilocks
+pip install -r requirements.txt
+python pie.py
+```
+
+---
+
+## 🛠️ Tech stack
+
+| Tool | Purpose |
+|------|---------|
+| Python | Core processing |
+| Neo4j Aura | Graph database |
+| Cypher | Graph queries |
+| Mermaid | Pipeline diagrams |
+| Google Colab | Development environment |
+
+---
+
+## 🗺️ Roadmap
+
+- [x] JSON pipeline parser
+- [x] Neo4j graph seeding
+- [x] Mermaid diagram generation
+- [x] Pipeline anonymiser
+- [ ] CLI entry point (`pie.py`)
+- [ ] PyPI package (`pip install goldilocks`)
+- [ ] AI agent layer — natural language pipeline queries
+- [ ] Power BI / Deneb monitoring dashboard
+
+---
+
+## 💡 Background
+
+Goldilocks grew out of a real operational need: when you manage dozens of integration pipelines, understanding how data flows across a complex estate becomes genuinely hard. Existing tools show you individual pipelines — Goldilocks shows you the whole map.
+
+Built as part of an independent R&D practice exploring the intersection of **graph databases**, **data integration**, and **AI-assisted operations**.
+
+---
+
+## 👩‍💻 Author
+
+**Hélène Martin** — Application & BI Engineer  
+Folkestone, UK 🇫🇷🇬🇧  
+[github.com/Helene-Garance-Martin](https://github.com/Helene-Garance-Martin)
+
+---
+
+*Named after Goldilocks — because good pipeline architecture is about finding what's just right.* 🐻
