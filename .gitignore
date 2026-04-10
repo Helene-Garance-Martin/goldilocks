@@ -205,3 +205,9 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Goldilocks — sensitive config (never commit!)
+config_real.py
+test-data/
+*.env
+.env*
