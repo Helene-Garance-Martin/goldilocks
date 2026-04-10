@@ -211,3 +211,9 @@ config_real.py
 test-data/
 *.env
 .env*
+
+# Raw pipeline exports — never commit!
+pipeline_exports/
+*.slp
+export.json
+accounts_template.json
