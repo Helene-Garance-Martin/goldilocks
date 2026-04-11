@@ -1,10 +1,4 @@
-#!/usr/bin/env python3
-"""
-json_parser.py - JSON File Parsing Practice
 
-Learning to parse JSON files for data extraction.
-Part of DataCamp "Working with Files in Python" exercises.
-"""
 
 import json
 from typing import Dict, List, Tuple, Any

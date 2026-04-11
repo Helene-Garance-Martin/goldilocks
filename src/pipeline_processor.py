@@ -1,10 +1,4 @@
 #!/usr/bin/env python3
-"""
-file_processor.py - JSON File Processing Practice
-
-Learning to parse JSON files and generate documentation.
-Exercise from DataCamp "Working with Files in Python" course.
-"""
 
 import sys
 from pathlib import Path
