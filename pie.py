@@ -3,10 +3,12 @@
 # 🥧 pie.py — Goldilocks CLI Entry Point
 # ============================================================
 # Pipeline Intelligence Engine
+# Built with Typer — github.com/tiangolo/typer
 # ============================================================
 
-import sys
+import typer
 import time
+from typing import Optional
 
 # ------------------------------------------------------------
 # ANSI colour codes
@@ -19,123 +21,210 @@ CYAN    = "\033[96m"
 RESET   = "\033[0m"
 BOLD    = "\033[1m"
 
-
 # ------------------------------------------------------------
 # ASCII LOGO
 # ------------------------------------------------------------
 
 LOGO = f"""{YELLOW}
- 
-                                                      
- ▄   ▄▄▄▄      ▄▄          ▄▄                          
- ▀██████▀       ██    █▄    ██                         
-   ██   ▄       ██    ██ ▀▀ ██             ▄▄          
-   ██  ██ ▄███▄ ██ ▄████ ██ ██ ▄███▄ ▄███▀ ██ ▄█▀ ▄██▀█
-   ██  ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██    ████   ▀███▄
-   ▀█████▄▀███▀▄██▄█▀███▄██▄██▄▀███▀▄▀███▄▄██ ▀█▄█▄▄██▀
-   ▄   ██                                              
-   ▀████▀                                              
+  ██████╗  ██████╗ ██╗      ██████╗ ██╗██╗      ██████╗  ██████╗██╗  ██╗███████╗
+ ██╔════╝ ██╔═══██╗██║     ██╔═══██╗██║██║     ██╔═══██╗██╔════╝██║ ██╔╝██╔════╝
+ ██║  ███╗██║   ██║██║     ██║   ██║██║██║     ██║   ██║██║     █████╔╝ ███████╗
+ ██║   ██║██║   ██║██║     ██║   ██║██║██║     ██║   ██║██║     ██╔═██╗ ╚════██║
+ ╚██████╔╝╚██████╔╝███████╗╚██████╔╝██║███████╗╚██████╔╝╚██████╗██║  ██╗███████║
+  ╚═════╝  ╚═════╝ ╚══════╝ ╚═════╝ ╚═╝╚══════╝ ╚═════╝  ╚═════╝╚═╝  ╚═╝╚══════╝
 {RESET}"""
 
-TAGLINE = f"{GOLD}  Pipeline Intelligence Platform  •  curl · parse · graph · monitor{RESET}"
-DIVIDER = f"{YELLOW}  {'─' * 72}{RESET}"
-
-
-# ------------------------------------------------------------
-# MENU
-# ------------------------------------------------------------
-
-MENU = f"""
-{DIVIDER}
-{BOLD}  What would you like to do?{RESET}
-
-  {CYAN}[1]{RESET}  Run full pipeline  {GOLD}← recommended{RESET}
-  {CYAN}[2]{RESET}  Fetch pipelines from SnapLogic
-  {CYAN}[3]{RESET}  Anonymise pipeline data
-  {CYAN}[4]{RESET}  Seed Neo4j graph
-  {CYAN}[5]{RESET}  Generate Mermaid diagrams
-  {CYAN}[6]{RESET}  Ask Goldilocks a question  {GOLD}← AI mode 🤖{RESET}
-  {CYAN}[q]{RESET}  Quit
-{DIVIDER}
-"""
-
+TAGLINE  = f"{GOLD}  Pipeline Intelligence Platform  •  curl · parse · graph · monitor{RESET}"
+DIVIDER  = f"{YELLOW}  {'─' * 72}{RESET}"
 
 # ------------------------------------------------------------
-# STEP FUNCTIONS (stubs for now — we wire these up next)
+# Typer app
 # ------------------------------------------------------------
 
-def step_fetch():
-    print(f"\n{CYAN}🌐 Fetching pipelines from SnapLogic...{RESET}")
-    time.sleep(0.5)
-    print(f"{GREEN}✅ Pipelines fetched!{RESET}")
+app = typer.Typer(
+    name="goldilocks",
+    help="🐻 Goldilocks — Pipeline Intelligence Platform",
+    add_completion=False,
+)
 
-def step_anonymise():
-    print(f"\n{CYAN}🔒 Anonymising sensitive data...{RESET}")
-    time.sleep(0.5)
-    print(f"{GREEN}✅ Data anonymised!{RESET}")
+# ------------------------------------------------------------
+# Helper — print logo
+# ------------------------------------------------------------
 
-def step_seed():
-    print(f"\n{CYAN}🌱 Seeding Neo4j graph...{RESET}")
-    time.sleep(0.5)
-    print(f"{GREEN}✅ Graph seeded!{RESET}")
+def print_logo():
+    typer.echo(LOGO)
+    typer.echo(TAGLINE)
+    typer.echo(DIVIDER)
+    typer.echo("")
 
-def step_visualise():
-    print(f"\n{CYAN}🎨 Generating Mermaid diagrams...{RESET}")
-    time.sleep(0.5)
-    print(f"{GREEN}✅ Diagrams generated!{RESET}")
+# ------------------------------------------------------------
+# COMMANDS
+# ------------------------------------------------------------
 
-def step_ask():
-    print(f"\n{CYAN}🤖 Goldilocks AI mode{RESET}")
-    question = input(f"{GOLD}  Ask Goldilocks > {RESET}")
-    print(f"\n{GREEN}  🔍 Thinking...{RESET}")
+@app.command()
+def fetch(
+    org: str = typer.Option(..., help="Your SnapLogic org name  (e.g. rbo-dev)\n  💡 Find it in your SnapLogic Designer URL:\n     https://emea.snaplogic.com/sl/designer/YOUR-ORG/YOUR-PROJECT"),
+    project: str = typer.Option(..., help="Your SnapLogic project path  (e.g. 'DIESE/DIESE-Business Continuity')"),
+    username: str = typer.Option(..., help="Your SnapLogic username (email)"),
+    password: str = typer.Option(..., prompt=True, hide_input=True, help="Your SnapLogic password"),
+    output: str = typer.Option("pipeline_exports/", help="Folder to save exported pipeline files"),
+):
+    """
+    🌐 Fetch pipeline exports from the SnapLogic API.
+
+    Connects to SnapLogic, downloads pipeline assets as a zip,
+    unzips and saves JSON files to the output folder.
+    """
+    print_logo()
+    typer.echo(f"{CYAN}🌐 Fetching pipelines from SnapLogic...{RESET}")
+    typer.echo(f"   Org:     {org}")
+    typer.echo(f"   Project: {project}")
+    typer.echo(f"   Output:  {output}")
+    typer.echo("")
+
+    # ← wire up src/fetcher.py here
+    time.sleep(0.5)
+    typer.echo(f"{GREEN}✅ Pipelines fetched and saved to {output}{RESET}\n")
+
+
+@app.command()
+def anonymise(
+    input: str = typer.Option("pipeline_exports/export.json", help="Path to raw pipeline JSON file"),
+    output: str = typer.Option("pipeline_exports/export_clean.json", help="Path to write anonymised output"),
+):
+    """
+    🔒 Anonymise sensitive data from pipeline exports.
+
+    Scrubs org names, URLs, and credentials before
+    pushing anything to GitHub or sharing publicly.
+    """
+    print_logo()
+    typer.echo(f"{CYAN}🔒 Anonymising pipeline data...{RESET}")
+    typer.echo(f"   Input:  {input}")
+    typer.echo(f"   Output: {output}")
+    typer.echo("")
+
+    # ← wire up src/anonymiser.py here
+    time.sleep(0.5)
+    typer.echo(f"{GREEN}✅ Clean file written to {output}{RESET}\n")
+
+
+@app.command()
+def seed(
+    input: str = typer.Option("pipeline_exports/export_clean.json", help="Path to anonymised pipeline JSON"),
+    uri: str = typer.Option(..., help="Neo4j Aura URI  (e.g. neo4j+s://xxxxxxxx.databases.neo4j.io)\n  💡 Find it in your Neo4j Aura console"),
+    username: str = typer.Option("neo4j", help="Neo4j username"),
+    password: str = typer.Option(..., prompt=True, hide_input=True, help="Neo4j password"),
+):
+    """
+    🌱 Seed the Neo4j graph with pipeline data.
+
+    Parses snap nodes and connections from the pipeline JSON
+    and loads them into your Neo4j Aura graph database.
+    """
+    print_logo()
+    typer.echo(f"{CYAN}🌱 Seeding Neo4j graph...{RESET}")
+    typer.echo(f"   Input: {input}")
+    typer.echo(f"   URI:   {uri}")
+    typer.echo("")
+
+    # ← wire up src/seeder.py here
+    time.sleep(0.5)
+    typer.echo(f"{GREEN}✅ Graph seeded successfully!{RESET}\n")
+
+
+@app.command()
+def visualise(
+    input: str = typer.Option("pipeline_exports/export_clean.json", help="Path to anonymised pipeline JSON"),
+    output: str = typer.Option("diagrams/", help="Folder to save Mermaid diagram files"),
+):
+    """
+    🎨 Generate Mermaid diagrams from pipeline data.
+
+    Creates .mmd diagram files showing pipeline architecture —
+    snap nodes, connections, and flow direction.
+    """
+    print_logo()
+    typer.echo(f"{CYAN}🎨 Generating Mermaid diagrams...{RESET}")
+    typer.echo(f"   Input:  {input}")
+    typer.echo(f"   Output: {output}")
+    typer.echo("")
+
+    # ← wire up src/visualiser.py here
+    time.sleep(0.5)
+    typer.echo(f"{GREEN}✅ Diagrams saved to {output}{RESET}\n")
+
+
+@app.command()
+def ask(
+    question: Optional[str] = typer.Argument(None, help="Ask Goldilocks a question about your pipelines"),
+):
+    """
+    🤖 Ask Goldilocks a question about your pipeline graph.
+
+    Uses AI to query your Neo4j graph in plain English.
+    No Cypher needed!
+
+    Example: goldilocks ask 'Which pipelines connect to SharePoint?'
+    """
+    print_logo()
+    if not question:
+        question = typer.prompt(f"{GOLD}  Ask Goldilocks{RESET}")
+
+    typer.echo(f"\n{CYAN}🔍 Thinking...{RESET}")
     time.sleep(1)
-    print(f"{GREEN}  Coming soon! 🚀{RESET}")
 
-def run_full_pipeline():
-    print(f"\n{GOLD}  Running full pipeline...{RESET}")
-    step_fetch()
-    step_anonymise()
-    step_seed()
-    step_visualise()
-    print(f"\n{GREEN}{BOLD}  🐻 All done! Your pipeline graph is ready.{RESET}\n")
+    # ← wire up LangChain + Neo4j GraphRAG here
+    typer.echo(f"{GREEN}  AI mode coming soon! 🚀{RESET}\n")
+
+
+@app.command()
+def run(
+    org: str = typer.Option(..., help="Your SnapLogic org name"),
+    project: str = typer.Option(..., help="Your SnapLogic project path"),
+    username: str = typer.Option(..., help="Your SnapLogic username"),
+    password: str = typer.Option(..., prompt=True, hide_input=True, help="Your SnapLogic password"),
+    neo4j_uri: str = typer.Option(..., help="Neo4j Aura URI"),
+    neo4j_password: str = typer.Option(..., prompt=True, hide_input=True, help="Neo4j password"),
+):
+    """
+    🚀 Run the full Goldilocks pipeline end to end.
+
+    fetch → anonymise → seed → visualise
+
+    The recommended way to run Goldilocks in one command.
+    """
+    print_logo()
+    typer.echo(f"{GOLD}  Running full Goldilocks pipeline...{RESET}\n")
+
+    proceed = typer.confirm("  Are you happy to proceed?")
+    if not proceed:
+        typer.echo(f"\n{RED}  Cancelled.{RESET}\n")
+        raise typer.Exit()
+
+    typer.echo("")
+    typer.echo(f"{CYAN}🌐 Step 1/4 — Fetching pipelines...{RESET}")
+    time.sleep(0.5)
+    typer.echo(f"{GREEN}  ✅ Done{RESET}\n")
+
+    typer.echo(f"{CYAN}🔒 Step 2/4 — Anonymising data...{RESET}")
+    time.sleep(0.5)
+    typer.echo(f"{GREEN}  ✅ Done{RESET}\n")
+
+    typer.echo(f"{CYAN}🌱 Step 3/4 — Seeding Neo4j...{RESET}")
+    time.sleep(0.5)
+    typer.echo(f"{GREEN}  ✅ Done{RESET}\n")
+
+    typer.echo(f"{CYAN}🎨 Step 4/4 — Generating diagrams...{RESET}")
+    time.sleep(0.5)
+    typer.echo(f"{GREEN}  ✅ Done{RESET}\n")
+
+    typer.echo(f"{GOLD}{BOLD}  🐻 All done! Your pipeline graph is ready.{RESET}\n")
 
 
 # ------------------------------------------------------------
-# MAIN
+# ENTRY POINT
 # ------------------------------------------------------------
-
-def main():
-    # Print logo
-    print(LOGO)
-    print(TAGLINE)
-
-    while True:
-        print(MENU)
-        choice = input(f"{GOLD}  Choose (default: 1) > {RESET}").strip().lower()
-
-        if choice in ("", "1"):
-            proceed = input(f"\n{YELLOW}  Are you happy to proceed? (y/n) > {RESET}").strip().lower()
-            if proceed == "y":
-                run_full_pipeline()
-            else:
-                print(f"\n{RED}  Cancelled.{RESET}\n")
-
-        elif choice == "2":
-            step_fetch()
-        elif choice == "3":
-            step_anonymise()
-        elif choice == "4":
-            step_seed()
-        elif choice == "5":
-            step_visualise()
-        elif choice == "6":
-            step_ask()
-        elif choice == "q":
-            print(f"\n{YELLOW}  🐻 Goodbye! Just right.{RESET}\n")
-            sys.exit(0)
-        else:
-            print(f"\n{RED}  Invalid choice — please try again.{RESET}")
-
 
 if __name__ == "__main__":
-    main()
+    app()
