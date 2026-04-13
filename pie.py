@@ -8,7 +8,12 @@
 
 import typer
 import time
+import sys
+import os
 from typing import Optional
+
+# Add src/ to path so we can import our modules
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 # ------------------------------------------------------------
 # ANSI colour codes
@@ -26,12 +31,16 @@ BOLD    = "\033[1m"
 # ------------------------------------------------------------
 
 LOGO = f"""{YELLOW}
-  ██████╗  ██████╗ ██╗      ██████╗ ██╗██╗      ██████╗  ██████╗██╗  ██╗███████╗
- ██╔════╝ ██╔═══██╗██║     ██╔═══██╗██║██║     ██╔═══██╗██╔════╝██║ ██╔╝██╔════╝
- ██║  ███╗██║   ██║██║     ██║   ██║██║██║     ██║   ██║██║     █████╔╝ ███████╗
- ██║   ██║██║   ██║██║     ██║   ██║██║██║     ██║   ██║██║     ██╔═██╗ ╚════██║
- ╚██████╔╝╚██████╔╝███████╗╚██████╔╝██║███████╗╚██████╔╝╚██████╗██║  ██╗███████║
-  ╚═════╝  ╚═════╝ ╚══════╝ ╚═════╝ ╚═╝╚══════╝ ╚═════╝  ╚═════╝╚═╝  ╚═╝╚══════╝
+ 
+                                                       
+ ▄   ▄▄▄▄      ▄▄          ▄▄                          
+ ▀██████▀       ██    █▄    ██                         
+   ██   ▄       ██    ██ ▀▀ ██             ▄▄          
+   ██  ██ ▄███▄ ██ ▄████ ██ ██ ▄███▄ ▄███▀ ██ ▄█▀ ▄██▀█
+   ██  ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██    ████   ▀███▄
+   ▀█████▄▀███▀▄██▄█▀███▄██▄██▄▀███▀▄▀███▄▄██ ▀█▄█▄▄██▀
+   ▄   ██                                              
+   ▀████▀                                              
 {RESET}"""
 
 TAGLINE  = f"{GOLD}  Pipeline Intelligence Platform  •  curl · parse · graph · monitor{RESET}"
@@ -63,8 +72,12 @@ def print_logo():
 
 @app.command()
 def fetch(
-    org: str = typer.Option(..., help="Your SnapLogic org name  (e.g. rbo-dev)\n  💡 Find it in your SnapLogic Designer URL:\n     https://emea.snaplogic.com/sl/designer/YOUR-ORG/YOUR-PROJECT"),
-    project: str = typer.Option(..., help="Your SnapLogic project path  (e.g. 'DIESE/DIESE-Business Continuity')"),
+    org: str = typer.Option(..., help=(
+        "Your SnapLogic org name (e.g. rbo-dev)\n"
+        "  💡 Find it in your SnapLogic Designer URL:\n"
+        "     https://emea.snaplogic.com/sl/designer/YOUR-ORG/YOUR-PROJECT"
+    )),
+    project: str = typer.Option(..., help="Your SnapLogic project path (e.g. 'DIESE/DIESE-Business Continuity')"),
     username: str = typer.Option(..., help="Your SnapLogic username (email)"),
     password: str = typer.Option(..., prompt=True, hide_input=True, help="Your SnapLogic password"),
     output: str = typer.Option("pipeline_exports/", help="Folder to save exported pipeline files"),
@@ -89,30 +102,88 @@ def fetch(
 
 @app.command()
 def anonymise(
-    input: str = typer.Option("pipeline_exports/export.json", help="Path to raw pipeline JSON file"),
-    output: str = typer.Option("pipeline_exports/export_clean.json", help="Path to write anonymised output"),
+    input: str = typer.Option("export.json", help=(
+        "Path to raw pipeline JSON file\n"
+        "  💡 This is the export.json downloaded from SnapLogic\n"
+        "     or fetched via the fetch command"
+    )),
+    output: str = typer.Option("export_anonymised.json", help="Path to write the clean anonymised output"),
 ):
     """
-    🔒 Anonymise sensitive data from pipeline exports.
+    🔒 Sanitise and anonymise sensitive data from pipeline exports.
 
-    Scrubs org names, URLs, and credentials before
-    pushing anything to GitHub or sharing publicly.
+    Runs two steps automatically:
+      Step 1 — Sanitise: strips UI noise, rendering data and internal metadata
+      Step 2 — Anonymise: scrubs org names, URLs and credentials
+
+    Safe to commit the output to GitHub.
     """
     print_logo()
-    typer.echo(f"{CYAN}🔒 Anonymising pipeline data...{RESET}")
+    typer.echo(f"{CYAN}🔒 Cleaning pipeline data...{RESET}")
     typer.echo(f"   Input:  {input}")
     typer.echo(f"   Output: {output}")
     typer.echo("")
 
-    # ← wire up src/anonymiser.py here
+    # Step 1 — Sanitise (strip UI noise)
+    typer.echo(f"{CYAN}  Step 1/2 — Sanitising (stripping UI noise)...{RESET}")
+    try:
+        from sanitiser import sanitise_export
+        sanitise_export(input, "export_clean.json")
+        typer.echo(f"{GREEN}  ✅ Sanitised!{RESET}\n")
+    except Exception as e:
+        typer.echo(f"{RED}  ❌ Sanitise failed: {e}{RESET}\n")
+        raise typer.Exit(1)
+
+    # Step 2 — Anonymise (scrub sensitive data)
+    typer.echo(f"{CYAN}  Step 2/2 — Anonymising (scrubbing sensitive data)...{RESET}")
+    try:
+        from anonymiser import anonymise_pipeline
+        anonymise_pipeline("export_clean.json", output)
+        typer.echo(f"{GREEN}  ✅ Anonymised!{RESET}\n")
+    except Exception as e:
+        typer.echo(f"{RED}  ❌ Anonymise failed: {e}{RESET}\n")
+        raise typer.Exit(1)
+
+    typer.echo(f"{GREEN}{BOLD}✅ Clean file ready: {output}{RESET}")
+    typer.echo(f"{GOLD}  Safe to commit to GitHub! 🌟{RESET}\n")
+
+
+@app.command()
+def visualise(
+    input: str = typer.Option("export_anonymised.json", help=(
+        "Path to anonymised pipeline JSON\n"
+        "  💡 Run the anonymise command first to generate this file"
+    )),
+    output: str = typer.Option("diagrams/", help="Folder to save Mermaid diagram files"),
+    direction: str = typer.Option("LR", help="Diagram direction: LR (left to right) or TD (top to bottom)"),
+):
+    """
+    🎨 Generate Mermaid diagrams from pipeline data.
+
+    Creates .mmd diagram files showing pipeline architecture —
+    snap nodes, connections, and flow direction.
+
+    Colours represent Snap type. Border thickness represents error handling.
+    """
+    print_logo()
+    typer.echo(f"{CYAN}🎨 Generating Mermaid diagrams...{RESET}")
+    typer.echo(f"   Input:     {input}")
+    typer.echo(f"   Output:    {output}")
+    typer.echo(f"   Direction: {direction}")
+    typer.echo("")
+
+    # ← wire up src/mermaid_styles.py here
     time.sleep(0.5)
-    typer.echo(f"{GREEN}✅ Clean file written to {output}{RESET}\n")
+    typer.echo(f"{GREEN}✅ Diagrams saved to {output}{RESET}\n")
 
 
 @app.command()
 def seed(
-    input: str = typer.Option("pipeline_exports/export_clean.json", help="Path to anonymised pipeline JSON"),
-    uri: str = typer.Option(..., help="Neo4j Aura URI  (e.g. neo4j+s://xxxxxxxx.databases.neo4j.io)\n  💡 Find it in your Neo4j Aura console"),
+    input: str = typer.Option("export_anonymised.json", help="Path to anonymised pipeline JSON"),
+    uri: str = typer.Option(..., help=(
+        "Neo4j Aura URI (e.g. neo4j+s://xxxxxxxx.databases.neo4j.io)\n"
+        "  💡 Find it in your Neo4j Aura console at console.neo4j.io"
+    )),
     username: str = typer.Option("neo4j", help="Neo4j username"),
     password: str = typer.Option(..., prompt=True, hide_input=True, help="Neo4j password"),
 ):
@@ -131,28 +202,6 @@ def seed(
     # ← wire up src/seeder.py here
     time.sleep(0.5)
     typer.echo(f"{GREEN}✅ Graph seeded successfully!{RESET}\n")
-
-
-@app.command()
-def visualise(
-    input: str = typer.Option("pipeline_exports/export_clean.json", help="Path to anonymised pipeline JSON"),
-    output: str = typer.Option("diagrams/", help="Folder to save Mermaid diagram files"),
-):
-    """
-    🎨 Generate Mermaid diagrams from pipeline data.
-
-    Creates .mmd diagram files showing pipeline architecture —
-    snap nodes, connections, and flow direction.
-    """
-    print_logo()
-    typer.echo(f"{CYAN}🎨 Generating Mermaid diagrams...{RESET}")
-    typer.echo(f"   Input:  {input}")
-    typer.echo(f"   Output: {output}")
-    typer.echo("")
-
-    # ← wire up src/visualiser.py here
-    time.sleep(0.5)
-    typer.echo(f"{GREEN}✅ Diagrams saved to {output}{RESET}\n")
 
 
 @app.command()
@@ -190,7 +239,7 @@ def run(
     """
     🚀 Run the full Goldilocks pipeline end to end.
 
-    fetch → anonymise → seed → visualise
+    fetch → sanitise → anonymise → seed → visualise
 
     The recommended way to run Goldilocks in one command.
     """
@@ -203,19 +252,23 @@ def run(
         raise typer.Exit()
 
     typer.echo("")
-    typer.echo(f"{CYAN}🌐 Step 1/4 — Fetching pipelines...{RESET}")
+    typer.echo(f"{CYAN}🌐 Step 1/5 — Fetching pipelines...{RESET}")
     time.sleep(0.5)
     typer.echo(f"{GREEN}  ✅ Done{RESET}\n")
 
-    typer.echo(f"{CYAN}🔒 Step 2/4 — Anonymising data...{RESET}")
+    typer.echo(f"{CYAN}🧹 Step 2/5 — Sanitising...{RESET}")
     time.sleep(0.5)
     typer.echo(f"{GREEN}  ✅ Done{RESET}\n")
 
-    typer.echo(f"{CYAN}🌱 Step 3/4 — Seeding Neo4j...{RESET}")
+    typer.echo(f"{CYAN}🔒 Step 3/5 — Anonymising...{RESET}")
     time.sleep(0.5)
     typer.echo(f"{GREEN}  ✅ Done{RESET}\n")
 
-    typer.echo(f"{CYAN}🎨 Step 4/4 — Generating diagrams...{RESET}")
+    typer.echo(f"{CYAN}🌱 Step 4/5 — Seeding Neo4j...{RESET}")
+    time.sleep(0.5)
+    typer.echo(f"{GREEN}  ✅ Done{RESET}\n")
+
+    typer.echo(f"{CYAN}🎨 Step 5/5 — Generating diagrams...{RESET}")
     time.sleep(0.5)
     typer.echo(f"{GREEN}  ✅ Done{RESET}\n")
 
