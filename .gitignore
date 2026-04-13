@@ -217,3 +217,6 @@ pipeline_exports/
 *.slp
 export.json
 accounts_template.json
+export_clean.json
+export_anonymised.json
+
