@@ -12,7 +12,7 @@ try:
         driver.verify_connectivity()
         print("✅ SUCCESS! Connected to Neo4j!")
 
-        with driver.session(database="neo4j") as session:
+        with driver.session() as session:
             total = session.run("MATCH (n) RETURN count(n) AS total").single()["total"]
             print(f"📊 Found {total} nodes in your database")
 
