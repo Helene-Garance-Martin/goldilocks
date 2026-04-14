@@ -7,4 +7,4 @@ $env:NEO4J_URI      = "your-neo4j-uri-here"
 $env:NEO4J_USER     = "neo4j"
 $env:NEO4J_PASSWORD = "your-password-here"
 
-python .\goldilocks_seed.py
+python .\tests\test_connection.py
