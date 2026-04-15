@@ -7,10 +7,8 @@ from pathlib import Path
 
 class JsonParser:
     """Parser for structured JSON files - DataCamp practice exercise"""
-    
-    def __init__(self, filepath: str):
-        self.filepath = Path(filepath)
-        self.data = None
+    def __init__(self, pipeline_data: dict):
+        self.data = pipeline_data
         self.workflow_name = ""
         self.components = {}
         self.connections = []
