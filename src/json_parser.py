@@ -15,9 +15,6 @@ class JsonParser:
     
     def parse(self) -> Dict[str, Any]:
         """Parse a JSON file and extract structured information"""
-        # Load the JSON data
-        self._load_file()
-        
         # Extract components
         self._extract_workflow_name()
         self._extract_components()
@@ -168,34 +165,19 @@ def parse_json_file(filepath: str) -> Dict[str, Any]:
     parser = JsonParser(filepath)
     return parser.parse()
 
-
-# Test if run directly
+        
 if __name__ == "__main__":
-    import sys
-    
-    if len(sys.argv) != 2:
-        print("Usage: python json_parser.py <data_file.json>")
-        sys.exit(1)
-    
-    try:
-        result = parse_json_file(sys.argv[1])
-        
-        print(f"Workflow: {result['name']}")
-        print(f"Components: {result['stats']['component_count']}")
-        print(f"Connections: {result['stats']['connection_count']}")
-        print(f"Complexity: {result['stats']['complexity']}")
-        
-        print("\nComponents:")
-        for i, name in enumerate(result['components'].values(), 1):
-            print(f"  {i}. {name}")
-        
-        if result['connections']:
-            print("\nConnections:")
-            parser = JsonParser(sys.argv[1])
-            parser.parse()
-            for conn in parser.get_connection_summary():
-                print(f"  {conn['from']} → {conn['to']} ({conn['link_id']})")
-        
-    except Exception as e:
-        print(f"Error: {e}")
-        sys.exit(1)
+    import json
+
+    with open("export.json", "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    first_pipeline = data["entries"][0]
+
+    parser = JsonParser(first_pipeline)
+    result = parser.parse()
+
+    print("Name:", result["name"])
+    print("Components:", result["stats"]["component_count"])
+    print("Connections:", result["stats"]["connection_count"])
+    print(result)
