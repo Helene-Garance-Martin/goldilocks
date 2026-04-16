@@ -165,6 +165,23 @@ def parse_json_file(filepath: str) -> Dict[str, Any]:
     parser = JsonParser(filepath)
     return parser.parse()
 
+def to_mermaid(data: dict) -> str:
+    """Convert parsed pipeline data to Mermaid flowchart"""
+    
+    lines = ["flowchart LR"]
+
+    # Map component IDs → simple node names
+    id_map = {}
+    for i, (comp_id, label) in enumerate(data["components"].items()):
+        node_id = f"node{i}"
+        id_map[comp_id] = node_id
+        lines.append(f'  {node_id}["{label}"]')
+
+    # Add connections
+    for src, dst, _ in data["connections"]:
+        lines.append(f"  {id_map[src]} --> {id_map[dst]}")
+
+    return "\n".join(lines)
         
 if __name__ == "__main__":
     import json
@@ -177,7 +194,13 @@ if __name__ == "__main__":
     parser = JsonParser(first_pipeline)
     result = parser.parse()
 
+
+
     print("Name:", result["name"])
     print("Components:", result["stats"]["component_count"])
     print("Connections:", result["stats"]["connection_count"])
     print(result)
+    print("\n--- MERMAID ---\n")
+    print(to_mermaid(result))
+
+
