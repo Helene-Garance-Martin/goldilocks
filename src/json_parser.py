@@ -3,6 +3,7 @@
 import json
 from typing import Dict, List, Tuple, Any
 from pathlib import Path
+from visualiser import data_processing_workflow
 
 
 class JsonParser:
@@ -194,13 +195,12 @@ if __name__ == "__main__":
     parser = JsonParser(first_pipeline)
     result = parser.parse()
 
+    diagram = data_processing_workflow(
+        result["name"],
+        result["components"],
+        result["connections"],
+    )
 
-
-    print("Name:", result["name"])
-    print("Components:", result["stats"]["component_count"])
-    print("Connections:", result["stats"]["connection_count"])
-    print(result)
-    print("\n--- MERMAID ---\n")
-    print(to_mermaid(result))
-
+    print("\n--- MERMAID FROM VISUALISER ---\n")
+    print(diagram)
 

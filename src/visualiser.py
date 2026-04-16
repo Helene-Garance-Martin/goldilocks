@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-"""
-diagram_generator.py - Workflow Diagram Generation Practice
-
-Learning to create visual workflow diagrams from data.
-Part of DataCamp "Data Visualization with Python" exercises.
-"""
-
 from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass, field
 
