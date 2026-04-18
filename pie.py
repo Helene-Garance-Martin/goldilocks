@@ -159,22 +159,27 @@ def visualise(
 ):
     """
     🎨 Generate Mermaid diagrams from pipeline data.
-
-    Creates .mmd diagram files showing pipeline architecture —
-    snap nodes, connections, and flow direction.
-
-    Colours represent Snap type. Border thickness represents error handling.
     """
     print_logo()
-    typer.echo(f"{CYAN}🎨 Generating Mermaid diagrams...{RESET}")
+    typer.echo(f"{CYAN}🎨 Generating Mermaid diagram...{RESET}")
     typer.echo(f"   Input:     {input}")
-    typer.echo(f"   Output:    {output}")
-    typer.echo(f"   Direction: {direction}")
     typer.echo("")
 
-    # ← wire up src/mermaid_styles.py here
-    time.sleep(0.5)
-    typer.echo(f"{GREEN}✅ Diagrams saved to {output}{RESET}\n")
+    try:
+        # 👇 import your existing processor (the brain)
+        from pipeline_processor import process_json_file
+
+        # 👇 generate diagram (this calls parser + visualiser under the hood)
+        diagram = process_json_file(input, output_format="diagram")
+
+        # 👇 print to terminal
+        typer.echo("\n" + diagram + "\n")
+
+        typer.echo(f"{GREEN}✅ Diagram generated successfully!{RESET}\n")
+
+    except Exception as e:
+        typer.echo(f"{RED}❌ Failed to generate diagram: {e}{RESET}\n")
+        raise typer.Exit(1)
 
 
 @app.command()
