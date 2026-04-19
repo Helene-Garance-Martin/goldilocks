@@ -241,7 +241,8 @@ def generate_diagrams(input_path: str, output_dir: str, direction: str = "LR") -
         data = json.load(f)
 
     pipelines = data.get("entries", [data])
-    print(f"📦 Found {len(pipelines)} pipeline(s)\n")
+    count = len(pipelines)
+    print(f"📦 Found {count} pipeline{'s' if count != 1 else ''}\n")
 
     # ── Combined diagram — all pipelines ──────────────────
     combined      = build_pipeline_diagram(pipelines, direction)
@@ -256,10 +257,6 @@ def generate_diagrams(input_path: str, output_dir: str, direction: str = "LR") -
         path    = output_path / f"{name}.mmd"
         path.write_text(diagram, encoding='utf-8')
         print(f"✅ Pipeline diagram: {path}")
-
-    print(f"\n🐻 All diagrams saved to {output_dir}")
-    print(f"\n💡 Preview at: https://mermaid.live")
-
 
 # ------------------------------------------------------------
 # CLI ENTRY POINT
