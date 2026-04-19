@@ -197,7 +197,7 @@ def build_pipeline_diagram(
                         if child_name in other_name or other_name in child_name:
                             child_safe_id = pipeline_node_ids.get(other_name, "")
                             if child_safe_id and child_safe_id != p_safe_id:
-                                lines.append(f"    {p_safe_id} -->|CALLS| {child_safe_id}")
+                                llines.append(f"    {p_safe_id} -.->|CALLS| {child_safe_id}")
                 except (KeyError, TypeError):
                     pass
 
