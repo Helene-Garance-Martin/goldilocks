@@ -232,8 +232,9 @@ def ask(
 
         pipelines = data.get("entries", [data])
 
-        # v1: describe the first pipeline
-        answer = describe_pipeline(pipelines[0])
+        # v1: describe all pipelines
+        from describer import describe_all_pipelines
+        answer = describe_all_pipelines(data)
 
         typer.echo("")
         typer.echo(answer)
