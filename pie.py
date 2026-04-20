@@ -213,25 +213,35 @@ def seed(
 @app.command()
 def ask(
     question: Optional[str] = typer.Argument(None, help="Ask Goldilocks a question about your pipelines"),
+    input: str = typer.Option("export_anonymised.json", help="Path to anonymised pipeline JSON"),
 ):
     """
-    🤖 Ask Goldilocks a question about your pipeline graph.
-
-    Uses AI to query your Neo4j graph in plain English.
-    No Cypher needed!
-
-    Example: goldilocks ask 'Which pipelines connect to SharePoint?'
+    🤖 Ask Goldilocks a simple question about your pipelines.
     """
     print_logo()
+
     if not question:
-        question = typer.prompt(f"{GOLD}  Ask Goldilocks{RESET}")
+        question = typer.prompt(f"{GOLD}Ask Goldilocks{RESET}")
 
-    typer.echo(f"\n{CYAN}🔍 Thinking...{RESET}")
-    time.sleep(1)
+    try:
+        import json
+        from describer import describe_pipeline
 
-    # ← wire up LangChain + Neo4j GraphRAG here
-    typer.echo(f"{GREEN}  AI mode coming soon! 🚀{RESET}\n")
+        with open(input, "r", encoding="utf-8") as f:
+            data = json.load(f)
 
+        pipelines = data.get("entries", [data])
+
+        # v1: describe the first pipeline
+        answer = describe_pipeline(pipelines[0])
+
+        typer.echo("")
+        typer.echo(answer)
+        typer.echo("")
+
+    except Exception as e:
+        typer.echo(f"{RED}❌ Failed to answer question: {e}{RESET}\n")
+        raise typer.Exit(1)
 
 @app.command()
 def run(
