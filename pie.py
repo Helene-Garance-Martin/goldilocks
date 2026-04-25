@@ -71,34 +71,30 @@ def print_logo():
 # ------------------------------------------------------------
 
 @app.command()
-def fetch(
-    org: str = typer.Option(..., help=(
-        "Your SnapLogic org name (e.g. rbo-dev)\n"
-        "  💡 Find it in your SnapLogic Designer URL:\n"
-        "     https://emea.snaplogic.com/sl/designer/YOUR-ORG/YOUR-PROJECT"
-    )),
-    project: str = typer.Option(..., help="Your SnapLogic project path (e.g. 'DIESE/DIESE-Business Continuity')"),
-    username: str = typer.Option(..., help="Your SnapLogic username (email)"),
-    password: str = typer.Option(..., prompt=True, hide_input=True, help="Your SnapLogic password"),
-    output: str = typer.Option("pipeline_exports/", help="Folder to save exported pipeline files"),
-):
+def fetch():
     """
-    🌐 Fetch pipeline exports from the SnapLogic API.
-
-    Connects to SnapLogic, downloads pipeline assets as a zip,
-    unzips and saves JSON files to the output folder.
+    🌐 Fetch pipeline exports from SnapLogic
     """
     print_logo()
-    typer.echo(f"{CYAN}🌐 Fetching pipelines from SnapLogic...{RESET}")
-    typer.echo(f"   Org:     {org}")
-    typer.echo(f"   Project: {project}")
-    typer.echo(f"   Output:  {output}")
-    typer.echo("")
 
-    # ← wire up src/fetcher.py here
-    time.sleep(0.5)
-    typer.echo(f"{GREEN}✅ Pipelines fetched and saved to {output}{RESET}\n")
+    import typer
+    from snaplogic_url import parse_snaplogic_url
 
+    # Ask user for URL
+    url = typer.prompt("🐻 Paste your SnapLogic URL")
+
+    try:
+        parsed = parse_snaplogic_url(url)
+
+        typer.echo("")
+        typer.echo(f"Org:     {parsed['org']}")
+        typer.echo(f"Project: {parsed['project_path']}")
+        typer.echo(f"Export:  {parsed['export_url']}")
+        typer.echo("")
+
+    except Exception as e:
+        typer.echo(f"❌ Failed to parse URL: {e}")
+        raise typer.Exit(1)
 
 @app.command()
 def anonymise(
