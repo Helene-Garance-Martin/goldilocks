@@ -1,9 +1,4 @@
-
-
-import json
 from typing import Dict, List, Tuple, Any
-from pathlib import Path
-from visualiser import data_processing_workflow
 
 
 class JsonParser:
@@ -27,23 +22,7 @@ class JsonParser:
             'connections': self.connections,
             'stats': self._get_stats()
         }
-    
-    def _load_file(self):
-        """Load and parse the JSON file"""
-        if not self.filepath.exists():
-            raise FileNotFoundError(f"File not found: {self.filepath}")
-        
-        # Accept .slp and .json files for practice
-        valid_extensions = ['.json', '.slp']
-        if self.filepath.suffix.lower() not in valid_extensions:
-            raise ValueError(f"Expected .json or .slp file, got: {self.filepath.suffix}")
-        
-        try:
-            with open(self.filepath, 'r', encoding='utf-8') as f:
-                self.data = json.load(f)
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON in {self.filepath}: {e}")
-    
+       
     def _extract_workflow_name(self):
         """Extract workflow name from JSON structure"""
         try:
@@ -51,7 +30,7 @@ class JsonParser:
             self.workflow_name = self.data['property_map']['info']['label']['value']
         except KeyError:
             # Fallback to simple format or filename
-            self.workflow_name = self.data.get('name', self.filepath.stem)
+            self.workflow_name = self.data.get("name", "Unknown pipeline")
     
     def _extract_components(self):
         """Extract component information (id -> label mapping)"""
@@ -166,23 +145,6 @@ def parse_json_file(filepath: str) -> Dict[str, Any]:
     parser = JsonParser(filepath)
     return parser.parse()
 
-def to_mermaid(data: dict) -> str:
-    """Convert parsed pipeline data to Mermaid flowchart"""
-    
-    lines = ["flowchart LR"]
-
-    # Map component IDs → simple node names
-    id_map = {}
-    for i, (comp_id, label) in enumerate(data["components"].items()):
-        node_id = f"node{i}"
-        id_map[comp_id] = node_id
-        lines.append(f'  {node_id}["{label}"]')
-
-    # Add connections
-    for src, dst, _ in data["connections"]:
-        lines.append(f"  {id_map[src]} --> {id_map[dst]}")
-
-    return "\n".join(lines)
         
 if __name__ == "__main__":
     import json
