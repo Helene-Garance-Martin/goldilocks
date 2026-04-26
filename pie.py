@@ -239,12 +239,10 @@ def seed(
     # ← wire up src/seeder.py here
     time.sleep(0.5)
     typer.echo(f"{GREEN}✅ Graph seeded successfully!{RESET}\n")
-
-
+    
 @app.command()
 def ask(
     question: Optional[str] = typer.Argument(None, help="Ask Goldilocks a question about your pipelines"),
-    input: str = typer.Option("export_anonymised.json", help="Path to anonymised pipeline JSON"),
 ):
     """
     🤖 Ask Goldilocks a simple question about your pipelines.
@@ -255,17 +253,8 @@ def ask(
         question = typer.prompt(f"{GOLD}Ask Goldilocks{RESET}")
 
     try:
-        import json
-        from describer import describe_pipeline
-
-        with open(input, "r", encoding="utf-8") as f:
-            data = json.load(f)
-
-        pipelines = data.get("entries", [data])
-
-        # v1: describe all pipelines
-        from describer import describe_all_pipelines
-        answer = describe_all_pipelines(data)
+        from describer import describe_from_neo4j
+        answer = describe_from_neo4j()
 
         typer.echo("")
         typer.echo(answer)
@@ -274,6 +263,7 @@ def ask(
     except Exception as e:
         typer.echo(f"{RED}❌ Failed to answer question: {e}{RESET}\n")
         raise typer.Exit(1)
+
 
 @app.command()
 def run(

@@ -1,95 +1,121 @@
 # ============================================================
-# 🐻 GOLDILOCKS — Pipeline Describer
+# 🐻 GOLDILOCKS — Pipeline Describer (Neo4j version)
 # ============================================================
-# Generates plain English summaries of pipeline exports.
-# No AI needed — reads snap types and describes what they do.
+# Queries Neo4j graph to generate plain English pipeline
+# summaries. Much richer than reading JSON directly!
 #
 # Run:
-#   python src/describer.py --input export_anonymised.json
+#   python src/describer.py
 # ============================================================
 
-import json
-import argparse
-from pathlib import Path
+import os
+from neo4j import GraphDatabase
 
 
 # ------------------------------------------------------------
-# SNAP DESCRIPTIONS — plain English per class_id pattern
+# Lambda functions
 # ------------------------------------------------------------
 
-def get_step_description(class_id: str) -> str | None:
-    c = class_id.lower()
-    if "directorybrowser" in c:
-        return "fetches files from SFTP"
-    elif "sftp" in c and "simpleread" in c:
-        return "fetches files from SFTP"
-    elif "binary-simpleread" in c:
-        return "reads binary file content"   # ← more accurate!
-    elif "httpclient" in c:
-        return "sends data via HTTP"
-    elif "binarytodocument" in c or "mapper" in c:
-        return "transforms data"
-    elif "script-script" in c or "script" in c:
-        return "runs custom logic"
-    elif "pipeexec" in c:
-        return "calls a child pipeline"
-    return None
+# Plain English description per snap type
+describe_type = lambda snap_type: (
+    "fetches files from SFTP"      if snap_type == "sftp_get"    else
+    "sends files via SFTP"         if snap_type == "sftp_put"    else
+    "sends data via HTTP"          if snap_type == "httpclient"  else
+    "runs custom logic"            if snap_type == "script"      else
+    "calls a child pipeline"       if snap_type == "pipeexec"    else
+    "transforms data"              if snap_type == "mapper"      else
+    "queries a database"           if snap_type == "db_select"   else
+    "writes to a database"         if snap_type == "db_insert"   else
+    "filters records"              if snap_type == "filter"      else
+    None
+)
+
+# Complexity from snap count
+get_complexity = lambda count: (
+    "High"   if count > 10 else
+    "Medium" if count > 5  else
+    "Low"
+)
+
 
 # ------------------------------------------------------------
-# SINGLE PIPELINE DESCRIBER
+# Neo4j queries
 # ------------------------------------------------------------
 
-def describe_pipeline(pipeline: dict) -> str:
-    """Return a plain English description of one pipeline."""
-    name     = pipeline.get("name", "Unknown pipeline")
-    snap_map = pipeline.get("snap_map", {})
+def get_pipeline_summary(session, pipeline_name: str) -> dict:
+    """Query Neo4j for a single pipeline's full details."""
 
-    steps  = []
-    calls  = []
-    errors = []
-
-    for snap in snap_map.values():
-        class_id = snap.get("class_id", "").lower()
-
-        # Error handling behaviour
-        try:
-            error = snap["property_map"]["error"]["error_behavior"]["value"]
-            errors.append(error)
-        except Exception:
-            pass
-
-        # Step description
-        description = get_step_description(class_id)
-        if description:
-            steps.append(description)
-
-        # Child pipeline calls
-        if "pipeexec" in class_id:
-            try:
-                child = snap["property_map"]["settings"]["pipeline"]["value"]
-                if child:
-                    calls.append(child)
-            except Exception:
-                pass
-
-    # Deduplicate
-    steps = list(dict.fromkeys(steps))
-    calls = list(dict.fromkeys(calls))
-
-    # Complexity
-    snap_count = len(snap_map)
-    complexity = (
-        "High"   if snap_count > 10 else
-        "Medium" if snap_count > 5  else
-        "Low"
+    # Get snaps
+    snaps_result = session.run(
+        """
+        MATCH (p:Pipeline {name: $name})-[:HAS_SNAP]->(s:Snap)
+        RETURN s.label AS label, s.type AS type, s.error AS error
+        """,
+        name=pipeline_name
     )
+    snaps = [dict(r) for r in snaps_result]
 
-    # Error handling summary
-    if errors:
-        all_fail = all(e == "fail" for e in errors)
-        error_summary = "All snaps stop on error ⛔" if all_fail else "Mixed error handling ⚠️"
-    else:
-        error_summary = "Unknown"
+    # Get child pipelines
+    calls_result = session.run(
+        """
+        MATCH (p:Pipeline {name: $name})-[:CALLS]->(child:Pipeline)
+        RETURN child.name AS child_name
+        """,
+        name=pipeline_name
+    )
+    calls = [r["child_name"] for r in calls_result]
+
+    # Get parent pipelines
+    called_by_result = session.run(
+        """
+        MATCH (parent:Pipeline)-[:CALLS]->(p:Pipeline {name: $name})
+        RETURN parent.name AS parent_name
+        """,
+        name=pipeline_name
+    )
+    called_by = [r["parent_name"] for r in called_by_result]
+
+    return {
+        "name":      pipeline_name,
+        "snaps":     snaps,
+        "calls":     calls,
+        "called_by": called_by,
+    }
+
+
+def get_all_pipeline_names(session) -> list:
+    """Get all pipeline names from Neo4j."""
+    result = session.run("MATCH (p:Pipeline) RETURN p.name AS name ORDER BY p.name")
+    return [r["name"] for r in result]
+
+
+# ------------------------------------------------------------
+# Describer
+# ------------------------------------------------------------
+
+def describe_pipeline_from_graph(summary: dict) -> str:
+    """Generate plain English description from Neo4j graph data."""
+
+    name   = summary["name"]
+    snaps  = summary["snaps"]
+    calls  = summary["calls"]
+    called_by = summary["called_by"]
+
+    # What it does — deduplicated step descriptions
+    steps = []
+    for snap in snaps:
+        desc = describe_type(snap.get("type", ""))
+        if desc:
+            steps.append(desc)
+    steps = list(dict.fromkeys(steps))
+
+    # Complexity and error handling
+    snap_count = len(snaps)
+    complexity = get_complexity(snap_count)
+
+    errors = [s.get("error", "") for s in snaps if s.get("error")]
+    all_fail = all(e == "fail" for e in errors) if errors else False
+    error_summary = "All snaps stop on error ⛔" if all_fail else "Mixed error handling ⚠️"
 
     # Build output
     lines = [
@@ -113,40 +139,60 @@ def describe_pipeline(pipeline: dict) -> str:
         lines.append("")
         lines.append("Relationships:")
         for child in calls:
-            lines.append(f"  - Calls: {child}")
+            lines.append(f"  - Calls:     {child}")
+
+    if called_by:
+        if not calls:
+            lines.append("")
+            lines.append("Relationships:")
+        for parent in called_by:
+            lines.append(f"  - Called by: {parent}")
 
     return "\n".join(lines)
 
 
-# ------------------------------------------------------------
-# ALL PIPELINES DESCRIBER
-# ------------------------------------------------------------
-
-def describe_all_pipelines(data: dict) -> str:
-    """Return plain English summaries for all pipelines in the export."""
-    pipelines = data.get("entries", [data])
+def describe_all_from_graph(session) -> str:
+    """Describe all pipelines in Neo4j."""
+    names     = get_all_pipeline_names(session)
     divider   = "\n" + "═" * 40 + "\n"
-    summaries = [describe_pipeline(p) for p in pipelines]
+    summaries = []
+
+    for name in names:
+        summary = get_pipeline_summary(session, name)
+        summaries.append(describe_pipeline_from_graph(summary))
+
     return divider.join(summaries)
 
 
 # ------------------------------------------------------------
-# CLI ENTRY POINT
+# Main
 # ------------------------------------------------------------
 
+def main():
+    uri      = os.environ["NEO4J_URI"]
+    user     = os.environ.get("NEO4J_USER", "neo4j")
+    password = os.environ["NEO4J_PASSWORD"]
+
+    with GraphDatabase.driver(uri, auth=(user, password)) as driver:
+        driver.verify_connectivity()
+        with driver.session() as session:
+            print(describe_all_from_graph(session))
+
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="🐻 Goldilocks Describer — plain English pipeline summaries"
-    )
-    parser.add_argument("--input", default="export_anonymised.json", help="Path to anonymised pipeline JSON")
-    args = parser.parse_args()
+    main()
 
-    input_file = Path(args.input)
-    if not input_file.exists():
-        print(f"❌ File not found: {args.input}")
-        exit(1)
 
-    with open(input_file, 'r', encoding='utf-8') as f:
-        data = json.load(f)
+# ------------------------------------------------------------
+# Public function for pie.py ask command
+# ------------------------------------------------------------
 
-    print(describe_all_pipelines(data))
+def describe_from_neo4j() -> str:
+    """Called by pie.py ask command — returns full description."""
+    uri      = os.environ["NEO4J_URI"]
+    user     = os.environ.get("NEO4J_USER", "neo4j")
+    password = os.environ["NEO4J_PASSWORD"]
+
+    with GraphDatabase.driver(uri, auth=(user, password)) as driver:
+        with driver.session() as session:
+            return describe_all_from_graph(session)
