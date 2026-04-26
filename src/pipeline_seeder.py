@@ -27,14 +27,14 @@ extract_date = lambda d: d.get("$date", "") if isinstance(d, dict) else str(d) i
 
 # Resolves snap type from SnapLogic class_id
 resolve_snap_type = lambda class_id: (
-    "httpclient"  if "httpclient"  in class_id.lower() else
-    "script"      if "script"      in class_id.lower() else
-    "pipeexec"    if "pipeexec"    in class_id.lower() else
-    "mapper"      if "mapper"      in class_id.lower() else
-    "sftp_get"    if "sftp-get"    in class_id.lower() else
-    "sftp_put"    if "sftp-put"    in class_id.lower() else
-    "db_select"   if "db-select"   in class_id.lower() else
-    "filter"      if "filter"      in class_id.lower() else
+    "httpclient"  if "httpclient"        in class_id.lower() else
+    "script"      if "script-script"     in class_id.lower() else
+    "pipeexec"    if "pipeexec"          in class_id.lower() else
+    "sftp_get"    if "directorybrowser"  in class_id.lower() else
+    "sftp_get"    if "simpleread"        in class_id.lower() else
+    "mapper"      if "binarytodocument"  in class_id.lower() else
+    "mapper"      if "mapper"            in class_id.lower() else
+    "filter"      if "filter"            in class_id.lower() else
     "default"
 )
 
