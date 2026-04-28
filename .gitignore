@@ -225,3 +225,8 @@ scripts/run_neo4j.ps1
 
 # Generated Mermaid diagrams
 diagrams/*.mmd
+
+# SnapLogic exports
+*.zip
+pipeline_exports/
+export*.json
