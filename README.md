@@ -44,7 +44,7 @@ python pie.py visualise --input pipeline_exports/<project>/export.json
 
 ## 🎨 Example Output
 
-![Goldilocks Diagram](docs/example-diagram.png)
+![Goldilocks Combined Diagram](docs/goldilocks_combined.png)
 
 ---
 
