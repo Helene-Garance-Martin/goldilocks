@@ -18,6 +18,11 @@ Goldilocks is a pipeline intelligence platform for **SnapLogic** integration env
 
 ---
 
+## 🔄 How it works
+
+SnapLogic URL → API → JSON → Mermaid Diagram
+---
+
 ## 🏗️ Architecture
 
 ```
@@ -62,10 +67,8 @@ SnapLogic Export (JSON)
 - [x] Neo4j graph seeding
 - [x] Mermaid diagram generation
 - [x] Pipeline anonymiser
-- [ ] CLI entry point (`pie.py`)
-- [ ] PyPI package (`pip install goldilocks`)
-- [ ] AI agent layer — natural language pipeline queries
-- [ ] Power BI / Deneb monitoring dashboard
+- [x] PyPI package (`pip install goldilocks`)
+- [ ] AI agent layer — natural language pipeline querie
 
 ---
 
