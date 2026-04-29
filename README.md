@@ -65,7 +65,6 @@ SnapLogic Export (JSON)
     Neo4j Aura 🌐          ← Live graph database
 ```
 
----
 
 ## 🛠️ Tech stack
 
