@@ -17,6 +17,7 @@
 
 import json
 import argparse
+import re
 from pathlib import Path
 
 
@@ -97,6 +98,7 @@ get_icon = lambda snap_type: SNAP_ICONS.get(snap_type, SNAP_ICONS["default"])
 
 # Safe node ID — Mermaid doesn't like hyphens or long IDs
 safe_id = lambda snap_id: "n" + snap_id.replace("-", "_")[:8]
+safe_file_name = lambda name: re.sub(r"[^a-zA-Z0-9_]+", "_", name).strip("_")
 
 
 # ------------------------------------------------------------
@@ -145,8 +147,10 @@ def build_pipeline_diagram(
         link_map      = pipeline.get("link_map", {})
 
         # Safe subgraph ID
-        p_safe_id = "p_" + pipeline_name.replace("-", "_").replace(" ", "_")[:16]
+        p_safe_id = "p_" + safe_file_name(pipeline_name)[:16]
         pipeline_node_ids[pipeline_name] = p_safe_id
+        
+
 
         # ── Subgraph per pipeline ──────────────────────────
         lines.append(f"    subgraph {p_safe_id}[\"{pipeline_name}\"]")
@@ -173,7 +177,7 @@ def build_pipeline_diagram(
         lines.append("")
 
         # ── Snap connections ──────────────────────────────
-        for link_id, link in link_map.items():
+        for _, link in link_map.items():
             src = safe_id(link["src_id"])
             dst = safe_id(link["dst_id"])
             lines.append(f"        {src} --> {dst}")
@@ -252,7 +256,7 @@ def generate_diagrams(input_path: str, output_dir: str, direction: str = "LR") -
 
     # ── Individual diagram per pipeline ───────────────────
     for pipeline in pipelines:
-        name    = pipeline.get("name", "pipeline").replace(" ", "_")
+        name = safe_file_name(pipeline.get("name", "pipeline"))
         diagram = build_pipeline_diagram([pipeline], direction)
         path    = output_path / f"{name}.mmd"
         path.write_text(diagram, encoding='utf-8')

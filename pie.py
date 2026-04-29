@@ -5,12 +5,17 @@
 # Pipeline Intelligence Engine
 # Built with Typer — github.com/tiangolo/typer
 # ============================================================
-
 import typer
 import time
 import sys
 import os
+import zipfile
+import requests
+from pathlib import Path
+from requests.auth import HTTPBasicAuth
 from typing import Optional
+
+
 
 # Add src/ to path so we can import our modules
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
@@ -77,10 +82,9 @@ def fetch():
     """
     print_logo()
 
-    import typer
+  
     from snaplogic_url import parse_snaplogic_url
 
-    # Ask user for URL
     url = typer.prompt("🐻 Paste your SnapLogic URL")
 
     try:
@@ -92,56 +96,68 @@ def fetch():
         typer.echo(f"Export:  {parsed['export_url']}")
         typer.echo("")
 
+        username = os.getenv("SNAPLOGIC_USERNAME") or typer.prompt("SnapLogic username")
+        password = os.getenv("SNAPLOGIC_PASSWORD") or typer.prompt(
+            "SnapLogic password",
+            hide_input=True,
+        )
+
+        project_slug = (
+            parsed["project_path"]
+            .replace("/", "_")
+            .replace(" ", "_")
+            .replace("-", "_")
+            .lower()
+        )
+
+        output_dir = Path("pipeline_exports") / project_slug
+        zip_path = output_dir / "export.zip"
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        typer.echo(f"{CYAN}🌐 Downloading export...{RESET}")
+        typer.echo(f"   Output: {output_dir}")
+
+        response = requests.get(
+            parsed["export_url"],
+            auth=HTTPBasicAuth(username, password),
+        )
+
+        content_type = response.headers.get("Content-Type", "")
+
+        if response.status_code != 200:
+            typer.echo(f"{RED}❌ Export failed with status {response.status_code}{RESET}")
+            typer.echo(response.text)
+            raise typer.Exit(1)
+
+        if "json" in content_type.lower():
+            typer.echo(f"{RED}❌ Expected a zip, got JSON response:{RESET}")
+            typer.echo(response.text)
+            raise typer.Exit(1)
+
+        zip_path.write_bytes(response.content)
+
+        try:
+            with zipfile.ZipFile(zip_path, "r") as z:
+                z.extractall(output_dir)
+        except zipfile.BadZipFile:
+            typer.echo(f"{RED}❌ Downloaded file is not a valid zip.{RESET}")
+            raise typer.Exit(1)
+
+        export_json = output_dir / "export.json"
+
+        if not export_json.exists():
+            typer.echo(f"{RED}❌ export.json not found after unzip.{RESET}")
+            raise typer.Exit(1)
+
+        typer.echo(f"{GREEN}✅ Export downloaded and unzipped!{RESET}")
+        typer.echo(f"{GOLD}   JSON ready: {export_json}{RESET}")
+        typer.echo("")
+        typer.echo(f"{CYAN}Next:{RESET}")
+        typer.echo(f"  python pie.py visualise --input {export_json}")
+
     except Exception as e:
-        typer.echo(f"❌ Failed to parse URL: {e}")
+        typer.echo(f"{RED}❌ Fetch failed: {e}{RESET}")
         raise typer.Exit(1)
-
-@app.command()
-def anonymise(
-    input: str = typer.Option("export.json", help=(
-        "Path to raw pipeline JSON file\n"
-        "  💡 This is the export.json downloaded from SnapLogic\n"
-        "     or fetched via the fetch command"
-    )),
-    output: str = typer.Option("export_anonymised.json", help="Path to write the clean anonymised output"),
-):
-    """
-    🔒 Sanitise and anonymise sensitive data from pipeline exports.
-
-    Runs two steps automatically:
-      Step 1 — Sanitise: strips UI noise, rendering data and internal metadata
-      Step 2 — Anonymise: scrubs org names, URLs and credentials
-
-    Safe to commit the output to GitHub.
-    """
-    print_logo()
-    typer.echo(f"{CYAN}🔒 Cleaning pipeline data...{RESET}")
-    typer.echo(f"   Input:  {input}")
-    typer.echo(f"   Output: {output}")
-    typer.echo("")
-
-    # Step 1 — Sanitise (strip UI noise)
-    typer.echo(f"{CYAN}  Step 1/2 — Sanitising (stripping UI noise)...{RESET}")
-    try:
-        from sanitiser import sanitise_export
-        sanitise_export(input, "export_clean.json")
-        typer.echo(f"{GREEN}  ✅ Sanitised!{RESET}\n")
-    except Exception as e:
-        typer.echo(f"{RED}  ❌ Sanitise failed: {e}{RESET}\n")
-        raise typer.Exit(1)
-
-    # Step 2 — Anonymise (scrub sensitive data)
-    typer.echo(f"{CYAN}  Step 2/2 — Anonymising (scrubbing sensitive data)...{RESET}")
-    try:
-        from anonymiser import anonymise_pipeline
-        anonymise_pipeline("export_clean.json", output)
-        typer.echo(f"{GREEN}  ✅ Anonymised!{RESET}\n")
-    except Exception as e:
-        typer.echo(f"{RED}  ❌ Anonymise failed: {e}{RESET}\n")
-        raise typer.Exit(1)
-
-    typer.echo(f"{GREEN}{BOLD}✅ Clean file ready: {output}{RESET}")
-    typer.echo(f"{GOLD}  Safe to commit to GitHub! 🌟{RESET}\n")
 
 
 @app.command()
