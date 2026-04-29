@@ -23,6 +23,24 @@ Goldilocks is a pipeline intelligence platform for **SnapLogic** integration env
 SnapLogic URL → API → JSON → Mermaid Diagram
 ---
 
+## 🚀 Usage
+
+Fetch a pipeline:
+
+```bash
+python pie.py fetch
+
+```bash
+Generate diagram:
+
+python pie.py visualise --input pipeline_exports/<project>/export.json
+
+## 💡 Why
+
+Integration pipelines are often opaque and difficult to understand.
+
+Goldilocks makes them visible, readable, and explainable.
+
 ## 🏗️ Architecture
 
 ```
