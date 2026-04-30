@@ -16,7 +16,8 @@
 # ============================================================
 
 import json
-import argparse
+import subprocess 
+import shutil 
 import re
 from pathlib import Path
 
@@ -226,55 +227,88 @@ def build_pipeline_diagram(
 
 
 # ------------------------------------------------------------
+# RENDER DIAGRAM
+# ------------------------------------------------------------
+
+def render_diagram(mmd_path: Path, fmt: str) -> None:
+    """Render .mmd to png or svg via Mermaid CLI (mmdc)."""
+    if fmt == "mmd":
+        return
+    if not shutil.which("mmdc"):
+        print("⚠️  mmdc not found — install with: npm install -g @mermaid-js/mermaid-cli")
+        return
+    out_path = mmd_path.with_suffix(f".{fmt}")
+    result = subprocess.run(
+        ["mmdc", "-i", str(mmd_path), "-o", str(out_path), "--backgroundColor", "white"],
+        capture_output=True, text=True
+    )
+    if result.returncode == 0:
+        print(f"🖼️  Rendered: {out_path}")
+    else:
+        print(f"❌ Render failed: {result.stderr.strip()}")
+        
+    result = subprocess.run(
+    ["mmdc", "-i", str(mmd_path), "-o", str(out_path), 
+     "--backgroundColor", "white",
+     "--puppeteerConfigFile", "puppeteer-config.json"],  
+    capture_output=True, text=True
+)
+
+
+# ------------------------------------------------------------
 # MAIN
 # ------------------------------------------------------------
 
-def generate_diagrams(input_path: str, output_dir: str, direction: str = "LR") -> None:
-    """
-    Load anonymised pipeline JSON and generate Mermaid diagrams.
-    Saves one .mmd file per pipeline + one combined diagram.
-    """
+def generate_diagrams(input_path: str, output_dir: str, direction: str = "LR", fmt: str = "mmd") -> None:
+    print(f"🔍 Format received: {fmt}")  # ← added temporarily to debug
     input_file  = Path(input_path)
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
-
     if not input_file.exists():
         print(f"❌ File not found: {input_path}")
+        raise FileNotFoundError(f"{input_path}")
         return
-
     print(f"📂 Loading: {input_path}")
-    with open(input_file, 'r', encoding='utf-8') as f:
-        data = json.load(f)
-
+    try:
+        with open(input_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except json.JSONDecodeError as e:
+        print(f"❌ Invalid JSON: {e}")
+        return
     pipelines = data.get("entries", [data])
     count = len(pipelines)
     print(f"📦 Found {count} pipeline{'s' if count != 1 else ''}\n")
-
-    # ── Combined diagram — all pipelines ──────────────────
+    if count > 5:
+        print(f"⚠️  {count} pipelines — combined diagram may be large. Use --single to isolate.")
+    # ── Combined diagram ───────────────────────────────────
     combined      = build_pipeline_diagram(pipelines, direction)
     combined_path = output_path / "goldilocks_combined.mmd"
     combined_path.write_text(combined, encoding='utf-8')
     print(f"✅ Combined diagram: {combined_path}")
-
-    # ── Individual diagram per pipeline ───────────────────
+    render_diagram(combined_path, fmt)
+    # ── Individual diagrams ────────────────────────────────
     for pipeline in pipelines:
-        name = safe_file_name(pipeline.get("name", "pipeline"))
+        name    = safe_file_name(pipeline.get("name", "pipeline"))
         diagram = build_pipeline_diagram([pipeline], direction)
         path    = output_path / f"{name}.mmd"
         path.write_text(diagram, encoding='utf-8')
         print(f"✅ Pipeline diagram: {path}")
-
+        render_diagram(path, fmt)
+    print(f"\n🐻 Done — {count + 1} diagrams written to {output_dir}")
 # ------------------------------------------------------------
 # CLI ENTRY POINT
 # ------------------------------------------------------------
 
 if __name__ == "__main__":
+    parser.add_argument("--format", default="mmd", choices=["mmd", "png", "svg"], 
+                    help="Output format (default: mmd)")
     parser = argparse.ArgumentParser(
         description="🐻 Goldilocks Visualiser — generate Mermaid diagrams"
     )
+  
     parser.add_argument("--input",     default="export_anonymised.json")
     parser.add_argument("--output",    default="diagrams/")
     parser.add_argument("--direction", default="LR")
     args = parser.parse_args()
 
-    generate_diagrams(args.input, args.output, args.direction)
+    generate_diagrams(args.input, args.output, args.direction, args.format)
