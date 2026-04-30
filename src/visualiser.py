@@ -63,6 +63,7 @@ SNAP_SHAPES = {
 # CLASSDEFS — colour coding per snap type
 # ------------------------------------------------------------
 
+# CLASSDEFS: add subgraph style to kill the black border
 CLASSDEFS = """    classDef httpclient fill:#D4A017,stroke:#8B6914,color:#1A1A1A
     classDef script     fill:#4A90D9,stroke:#2C5F8A,color:#FFFFFF
     classDef pipeexec   fill:#7B68EE,stroke:#483D8B,color:#FFFFFF
@@ -72,7 +73,7 @@ CLASSDEFS = """    classDef httpclient fill:#D4A017,stroke:#8B6914,color:#1A1A1A
     classDef mapper     fill:#5CB85C,stroke:#3D7A3D,color:#FFFFFF
     classDef filter     fill:#E74C3C,stroke:#922B21,color:#FFFFFF
     classDef trigger    fill:#95A5A6,stroke:#626D6E,color:#FFFFFF
-    classDef default    fill:#F5F5F5,stroke:#AAAAAA,color:#1A1A1A
+    classDef default    fill:#F5F5F5,stroke:#CCCCCC,color:#1A1A1A
     classDef pipeline   fill:#00BFFF,stroke:#0080AA,color:#1A1A1A"""
 
 
@@ -111,7 +112,7 @@ def format_label(label: str, snap_type: str) -> str:
     lines = []
     current = ""
     for word in words:
-        if len(current) + len(word) + 1 > 20:
+        if len(current) + len(word) + 1 > 28:
             if current:
                 lines.append(current.strip())
             current = word
@@ -135,6 +136,7 @@ def build_pipeline_diagram(
     Parent/child relationships shown between subgraphs.
     """
     lines = []
+    lines.append("%%{init: {'theme': 'base', 'flowchart': {'nodeSpacing': 50, 'rankSpacing': 80, 'padding': 16}, 'themeVariables': {'clusterBkg': '#FAFAFA', 'clusterBorder': '#CCCCCC'}}}%%")
     lines.append(f"flowchart {direction}")
     lines.append("")
 
