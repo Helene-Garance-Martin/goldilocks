@@ -261,7 +261,7 @@ def render_diagram(mmd_path: Path, fmt: str) -> None:
 # ------------------------------------------------------------
 
 def generate_diagrams(input_path: str, output_dir: str, direction: str = "LR", fmt: str = "mmd", single: str = None) -> None:
-    print(f"🔍 Format received: {fmt}")  # ← added temporarily to debug
+   
     input_file  = Path(input_path)
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
