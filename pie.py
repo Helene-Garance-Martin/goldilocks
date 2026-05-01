@@ -18,6 +18,7 @@ from typing import Optional
 from commands.ping import ping
 from commands.colours import YELLOW, GOLD, GREEN, RED, CYAN, RESET, BOLD
 from commands.doctor import doctor
+from commands.visualise import visualise
 
 
 
@@ -160,37 +161,7 @@ def fetch():
         typer.echo(f"{RED}❌ Fetch failed: {e}{RESET}")
         raise typer.Exit(1)
 
-@app.command()
-def visualise(
-    input: str = typer.Option("export_anonymised.json", help="Path to anonymised pipeline JSON"),
-    output: str = typer.Option("diagrams/", help="Folder to save Mermaid diagram files"),
-    direction: str = typer.Option("LR", help="Diagram direction: LR or TD"),
-    fmt: str = typer.Option("mmd", help="Output format: mmd, png or svg"),
-    single: str = typer.Option(None, help="Name of single pipeline to visualise"),  
-):
-    """
-    🎨 Generate Mermaid diagrams from pipeline data.
-
-    Creates .mmd diagram files showing pipeline architecture —
-    snap nodes with icons, connections, subgraphs and colour coding.
-
-    Colours represent Snap type. Icons show what each snap does.
-    """
-
-    typer.echo(f"{CYAN}🎨 Generating Mermaid diagrams...{RESET}")
-    typer.echo(f"   Input:     {input}")
-    typer.echo(f"   Output:    {output}")
-    typer.echo(f"   Direction: {direction}")
-    typer.echo("")
-
-    try:
-        from visualiser import generate_diagrams
-        generate_diagrams(input, output, direction, fmt, single)
-        typer.echo(f"{GOLD}  💡 Open any .mmd file in VS Code to preview{RESET}\n")
-
-    except Exception as e:
-        typer.echo(f"{RED}❌ Failed to generate diagram: {e}{RESET}\n")
-        raise typer.Exit(1)
+app.command()(visualise)
 
 app.command()(ping)
 
