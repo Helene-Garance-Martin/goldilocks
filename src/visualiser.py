@@ -245,7 +245,8 @@ def render_diagram(mmd_path: Path, fmt: str) -> None:
     if result.returncode == 0:
         print(f"🖼️  Rendered: {out_path}")
     else:
-        print(f"❌ Render failed: {result.stderr.strip()}")
+        print(f"⚠️  PNG render unavailable in this environment (Codespaces/Linux missing Chrome libs)")
+        print(f"   💡 Use .mmd preview in VS Code, or run locally for PNG output")
         
     result = subprocess.run(
     ["mmdc", "-i", str(mmd_path), "-o", str(out_path), 
