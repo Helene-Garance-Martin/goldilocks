@@ -6,6 +6,7 @@
 # Built with Typer — github.com/tiangolo/typer
 # ============================================================
 import typer
+from typer import Context
 import time
 import sys
 import os
@@ -75,13 +76,20 @@ def print_logo():
 # COMMANDS
 # ------------------------------------------------------------
 
+@app.callback(invoke_without_command=True)
+def main(ctx: typer.Context):
+    """🐻 Goldilocks — Pipeline Intelligence Platform"""
+    if ctx.invoked_subcommand is None:
+        print_logo()
+        typer.echo("  Run 'python pie.py --help' to see available commands.\n")
+
+
 @app.command()
 def fetch():
     """
     🌐 Fetch pipeline exports from SnapLogic
     """
-    print_logo()
-
+    
   
     from snaplogic_url import parse_snaplogic_url
 
@@ -159,8 +167,6 @@ def fetch():
         typer.echo(f"{RED}❌ Fetch failed: {e}{RESET}")
         raise typer.Exit(1)
 
-
-@app.command()
 @app.command()
 def visualise(
     input: str = typer.Option("export_anonymised.json", help="Path to anonymised pipeline JSON"),
@@ -177,7 +183,7 @@ def visualise(
 
     Colours represent Snap type. Icons show what each snap does.
     """
-    print_logo()
+
     typer.echo(f"{CYAN}🎨 Generating Mermaid diagrams...{RESET}")
     typer.echo(f"   Input:     {input}")
     typer.echo(f"   Output:    {output}")
@@ -200,7 +206,7 @@ def ping():
     Run this every few days to prevent Aura Free tier
     from deleting your instance due to inactivity!
     """
-    print_logo()
+
     typer.echo(f"{CYAN}🏓 Pinging Neo4j...{RESET}\n")
 
     try:
@@ -234,7 +240,7 @@ def doctor():
     """
     🩺 Check all Goldilocks dependencies are installed and reachable.
     """
-    print_logo()
+
     typer.echo(f"{CYAN}🩺 Running Goldilocks health check...{RESET}\n")
 
     all_ok = True
@@ -307,7 +313,7 @@ def seed(
     Parses snap nodes and connections from the pipeline JSON
     and loads them into your Neo4j Aura graph database.
     """
-    print_logo()
+
     typer.echo(f"{CYAN}🌱 Seeding Neo4j graph...{RESET}")
     typer.echo(f"   Input: {input}")
     typer.echo(f"   URI:   {uri}")
@@ -324,7 +330,6 @@ def ask(
     """
     🤖 Ask Goldilocks a simple question about your pipelines.
     """
-    print_logo()
 
     if not question:
         question = typer.prompt(f"{GOLD}Ask Goldilocks{RESET}")
@@ -358,7 +363,7 @@ def run(
 
     The recommended way to run Goldilocks in one command.
     """
-    print_logo()
+
     typer.echo(f"{GOLD}  Running full Goldilocks pipeline...{RESET}\n")
 
     proceed = typer.confirm("  Are you happy to proceed?")
