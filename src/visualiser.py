@@ -302,14 +302,16 @@ def generate_diagrams(input_path: str, output_dir: str, direction: str = "LR", f
     print(f"✅ Combined diagram: {combined_path}")
     render_diagram(combined_path, fmt)
     # ── Individual diagrams ────────────────────────────────
-    for pipeline in pipelines:
-        name    = safe_file_name(pipeline.get("name", "pipeline"))
-        diagram = build_pipeline_diagram([pipeline], direction)
-        path    = output_path / f"{name}.mmd"
-        path.write_text(diagram, encoding='utf-8')
-        print(f"✅ Pipeline diagram: {path}")
-        render_diagram(path, fmt)
+    from typer import progressbar
+    with progressbar(pipelines, label="  🎨 Generating") as progress:
+        for pipeline in progress:
+            name    = safe_file_name(pipeline.get("name", "pipeline"))
+            diagram = build_pipeline_diagram([pipeline], direction)
+            path    = output_path / f"{name}.mmd"
+            path.write_text(diagram, encoding='utf-8')
+            render_diagram(path, fmt)
     print(f"\n🐻 Done — {count + 1} diagrams written to {output_dir}")
+    
 # ------------------------------------------------------------
 # CLI ENTRY POINT
 # ------------------------------------------------------------
