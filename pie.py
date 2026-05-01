@@ -18,6 +18,7 @@ from commands.ping import ping
 from commands.doctor import doctor
 from commands.visualise import visualise
 from commands.fetch import fetch
+from commands.ask import ask
 
 
 
@@ -110,30 +111,8 @@ def seed(
     # ← wire up src/seeder.py here
     time.sleep(0.5)
     typer.echo(f"{GREEN}✅ Graph seeded successfully!{RESET}\n")
-    
-@app.command()
-def ask(
-    question: Optional[str] = typer.Argument(None, help="Ask Goldilocks a question about your pipelines"),
-):
-    """
-    🤖 Ask Goldilocks a simple question about your pipelines.
-    """
 
-    if not question:
-        question = typer.prompt(f"{GOLD}Ask Goldilocks{RESET}")
-
-    try:
-        from describer import describe_from_neo4j
-        answer = describe_from_neo4j()
-
-        typer.echo("")
-        typer.echo(answer)
-        typer.echo("")
-
-    except Exception as e:
-        typer.echo(f"{RED}❌ Failed to answer question: {e}{RESET}\n")
-        raise typer.Exit(1)
-
+app.command()(ask)   
 
 @app.command()
 def run(
