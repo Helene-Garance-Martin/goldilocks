@@ -161,11 +161,13 @@ def fetch():
 
 
 @app.command()
+@app.command()
 def visualise(
     input: str = typer.Option("export_anonymised.json", help="Path to anonymised pipeline JSON"),
     output: str = typer.Option("diagrams/", help="Folder to save Mermaid diagram files"),
     direction: str = typer.Option("LR", help="Diagram direction: LR or TD"),
-    fmt: str = typer.Option("mmd", help="Output format: mmd, png or svg"),  # ← add this
+    fmt: str = typer.Option("mmd", help="Output format: mmd, png or svg"),
+    single: str = typer.Option(None, help="Name of single pipeline to visualise"),  
 ):
     """
     🎨 Generate Mermaid diagrams from pipeline data.
@@ -184,7 +186,7 @@ def visualise(
 
     try:
         from visualiser import generate_diagrams
-        generate_diagrams(input, output, direction, fmt)
+        generate_diagrams(input, output, direction, fmt, single)
         typer.echo(f"{GREEN}✅ Diagrams saved to {output}{RESET}")
         typer.echo(f"{GOLD}  Preview at: https://mermaid.live 🌟{RESET}\n")
 

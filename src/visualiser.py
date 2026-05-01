@@ -260,7 +260,7 @@ def render_diagram(mmd_path: Path, fmt: str) -> None:
 # MAIN
 # ------------------------------------------------------------
 
-def generate_diagrams(input_path: str, output_dir: str, direction: str = "LR", fmt: str = "mmd") -> None:
+def generate_diagrams(input_path: str, output_dir: str, direction: str = "LR", fmt: str = "mmd", single: str = None) -> None:
     print(f"🔍 Format received: {fmt}")  # ← added temporarily to debug
     input_file  = Path(input_path)
     output_path = Path(output_dir)
@@ -277,6 +277,20 @@ def generate_diagrams(input_path: str, output_dir: str, direction: str = "LR", f
         print(f"❌ Invalid JSON: {e}")
         return
     pipelines = data.get("entries", [data])
+    if single:
+        pipelines = [p for p in pipelines if single.lower() in p.get("name", "").lower()]
+        if not pipelines:
+            print(f"❌ No pipeline found matching: {single}")
+            return
+        print(f"🔍 Filtering to: {single}")
+        
+    if not single:
+        combined      = build_pipeline_diagram(pipelines, direction)
+        combined_path = output_path / "goldilocks_combined.mmd"
+        combined_path.write_text(combined, encoding='utf-8')
+        print(f"✅ Combined diagram: {combined_path}")
+        render_diagram(combined_path, fmt)
+
     count = len(pipelines)
     print(f"📦 Found {count} pipeline{'s' if count != 1 else ''}\n")
     if count > 5:
