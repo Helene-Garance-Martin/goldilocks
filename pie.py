@@ -187,8 +187,7 @@ def visualise(
     try:
         from visualiser import generate_diagrams
         generate_diagrams(input, output, direction, fmt, single)
-        typer.echo(f"{GREEN}✅ Diagrams saved to {output}{RESET}")
-        typer.echo(f"{GOLD}  Preview at: https://mermaid.live 🌟{RESET}\n")
+        typer.echo(f"{GOLD}  💡 Open any .mmd file in VS Code to preview{RESET}\n")
 
     except Exception as e:
         typer.echo(f"{RED}❌ Failed to generate diagram: {e}{RESET}\n")
@@ -290,7 +289,7 @@ def doctor():
         typer.echo(f"{GREEN}{BOLD}  🐻 All systems go!{RESET}\n")
     else:
         typer.echo(f"{YELLOW}{BOLD}  🐻 Some issues found — see above{RESET}\n")
-        
+
 
 @app.command()
 def seed(
