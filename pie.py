@@ -22,6 +22,7 @@ from commands.ask import ask
 from commands.seed import seed
 from commands.run import run
 from commands.sanitise import sanitise
+from commands.anonymise import anonymise
 
 
 
@@ -95,6 +96,8 @@ app.command()(seed)
 app.command()(ask)
 
 app.command()(run)
+
+app.command()(anonymise)
 
 
 # ------------------------------------------------------------
