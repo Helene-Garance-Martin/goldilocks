@@ -187,16 +187,3 @@ def sanitise_export(input_path: str, output_path: str) -> None:
             print(f"     Links (edges): {link_count}")
 
 
-# ------------------------------------------------------------
-# CLI ENTRY POINT
-# ------------------------------------------------------------
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="🐻 Goldilocks Sanitiser — strip UI noise from pipeline exports"
-    )
-    parser.add_argument("--input",  required=True, help="Path to raw export.json")
-    parser.add_argument("--output", required=True, help="Path to write clean output")
-    args = parser.parse_args()
-
-    sanitise_export(args.input, args.output)
