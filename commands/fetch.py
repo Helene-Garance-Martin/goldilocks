@@ -5,7 +5,10 @@ import requests
 import typer
 from pathlib import Path
 from requests.auth import HTTPBasicAuth
+from rich.console import Console
 from commands.colours import CYAN, GREEN, RED, GOLD, RESET
+
+console = Console()
 
 def fetch():
     """
@@ -42,13 +45,13 @@ def fetch():
         zip_path   = output_dir / "export.zip"
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        typer.echo(f"{CYAN}🌐 Downloading export...{RESET}")
         typer.echo(f"   Output: {output_dir}")
 
-        response = requests.get(
-            parsed["export_url"],
-            auth=HTTPBasicAuth(username, password),
-        )
+        with console.status("[magenta]Downloading export...[/magenta]", spinner="dots"):
+            response = requests.get(
+                parsed["export_url"],
+                auth=HTTPBasicAuth(username, password),
+            )
 
         content_type = response.headers.get("Content-Type", "")
 
@@ -62,14 +65,14 @@ def fetch():
             typer.echo(response.text)
             raise typer.Exit(1)
 
-        zip_path.write_bytes(response.content)
-
-        try:
-            with zipfile.ZipFile(zip_path, "r") as z:
-                z.extractall(output_dir)
-        except zipfile.BadZipFile:
-            typer.echo(f"{RED}❌ Downloaded file is not a valid zip.{RESET}")
-            raise typer.Exit(1)
+        with console.status("[magenta]Unzipping...[/magenta]", spinner="dots"):
+            zip_path.write_bytes(response.content)
+            try:
+                with zipfile.ZipFile(zip_path, "r") as z:
+                    z.extractall(output_dir)
+            except zipfile.BadZipFile:
+                typer.echo(f"{RED}❌ Downloaded file is not a valid zip.{RESET}")
+                raise typer.Exit(1)
 
         export_json = output_dir / "export.json"
 
