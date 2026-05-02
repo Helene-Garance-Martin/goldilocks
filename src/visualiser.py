@@ -20,6 +20,7 @@ import subprocess
 import shutil 
 import re
 from pathlib import Path
+from models import Snap, Pipeline, Link
 
 
 # ------------------------------------------------------------
@@ -123,6 +124,44 @@ def format_label(label: str, snap_type: str) -> str:
         lines.append(current.strip())
     formatted = "<br/>".join(lines)
     return f"{tag}<br/>{formatted}"
+
+# ------------------------------------------------------------
+# PARSE RAW JSON INTO PYDANTIC MODELS
+# ------------------------------------------------------------
+
+def parse_pipeline(raw: dict) -> Pipeline:
+    """Parse raw pipeline JSON into typed Pydantic models."""
+    snap_map = raw.get("snap_map", {})
+    link_map = raw.get("link_map", {})
+
+    snaps = []
+    for snap_id, snap in snap_map.items():
+        try:
+            label = snap["property_map"]["info"]["label"]["value"]
+        except (KeyError, TypeError):
+            label = snap_id
+
+        class_id  = snap.get("class_id", "unknown")
+        snap_type = resolve_snap_type(class_id)
+
+        snaps.append(Snap(
+            id        = snap_id,
+            label     = label,
+            snap_type = snap_type,
+            class_id  = class_id,
+            wipes_context = snap_type in ["httpclient", "script", "sftp_get", "sftp_put"]
+        ))
+
+    links = [
+        Link(src_id=l["src_id"], dst_id=l["dst_id"])
+        for l in link_map.values()
+    ]
+
+    return Pipeline(
+        name  = raw.get("name", "Unknown"),
+        snaps = snaps,
+        links = links,
+    )
 # ------------------------------------------------------------
 # BUILD DIAGRAM
 # ------------------------------------------------------------
@@ -277,6 +316,9 @@ def generate_diagrams(input_path: str, output_dir: str, direction: str = "LR", f
         print(f"❌ Invalid JSON: {e}")
         return
     pipelines = data.get("entries", [data])
+    pipelines_typed = [parse_pipeline(p) for p in pipelines]  # ← add here
+    if single:
+        pipelines = [p for p in pipelines if single.lower() in p.get("name", "").lower()]
     if single:
         pipelines = [p for p in pipelines if single.lower() in p.get("name", "").lower()]
         if not pipelines:
