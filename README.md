@@ -200,7 +200,7 @@ MIT — free to use, modify and distribute.
 
 ---
 
-## 👩‍💻 Author
+## *From RAGs to DAGs to Riches* 💅
 
 ---
 
