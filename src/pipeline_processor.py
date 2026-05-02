@@ -2,7 +2,7 @@ import sys
 import json
 from pathlib import Path
 from json_parser import JsonParser
-from visualiser import data_processing_workflow
+from diagram_builder import build_pipeline_diagram as data_processing_workflow
 
 
 def load_first_pipeline(filepath: str) -> dict:
