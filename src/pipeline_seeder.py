@@ -13,10 +13,12 @@
 
 import os
 import json
-import sys
 from pathlib import Path
 from neo4j import GraphDatabase
+from snap_resolver import resolve_snap_type
 
+# Extracts date string from SnapLogic's {"$date": "..."} format
+extract_date = lambda d: d.get("$date", "") if isinstance(d, dict) else str(d) if d else ""
 
 # ------------------------------------------------------------
 # Lambda functions
@@ -24,19 +26,6 @@ from neo4j import GraphDatabase
 
 # Extracts date string from SnapLogic's {"$date": "..."} format
 extract_date = lambda d: d.get("$date", "") if isinstance(d, dict) else str(d) if d else ""
-
-# Resolves snap type from SnapLogic class_id
-resolve_snap_type = lambda class_id: (
-    "httpclient"  if "httpclient"        in class_id.lower() else
-    "script"      if "script-script"     in class_id.lower() else
-    "pipeexec"    if "pipeexec"          in class_id.lower() else
-    "sftp_get"    if "directorybrowser"  in class_id.lower() else
-    "sftp_get"    if "simpleread"        in class_id.lower() else
-    "mapper"      if "binarytodocument"  in class_id.lower() else
-    "mapper"      if "mapper"            in class_id.lower() else
-    "filter"      if "filter"            in class_id.lower() else
-    "default"
-)
 
 
 # ------------------------------------------------------------
