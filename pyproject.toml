@@ -1,0 +1,57 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "goldilocks-pipeline"
+version = "0.1.0"
+description = "Pipeline Intelligence Platform — fetch, parse, graph and visualise SnapLogic pipelines"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+authors = [
+    { name = "Hélène Martin", email = "your@email.com" }
+]
+keywords = [
+    "snaplogic", "pipeline", "neo4j", "mermaid",
+    "cli", "devops", "data-engineering", "graph",
+    "knowledge-graph", "rag", "graph-rag",
+    "documentation-as-code", "pipeline-intelligence",
+    "integration", "arts-sector", "cultural-sector",
+    "ai", "llm", "graph-database",
+    "confluence", "jira", "atlassian",
+    "typer", "rich", "pydantic",
+    "airflow", "dag", "etl"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Database",
+    "Topic :: Documentation",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Documentation",
+]
+dependencies = [
+    "typer>=0.9.0",
+    "rich>=13.0.0",
+    "pydantic>=2.0.0",
+    "neo4j>=5.0.0",
+    "requests>=2.28.0",
+]
+
+[project.scripts]
+goldilocks = "pie:app"
+
+[project.urls]
+Homepage = "https://goldilocks-cli.org"
+Repository = "https://github.com/Helene-Garance-Martin/goldilocks"
+"Bug Tracker" = "https://github.com/Helene-Garance-Martin/goldilocks/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src", "commands"]
