@@ -190,7 +190,6 @@ Integration pipelines are often opaque and difficult to understand. When you man
 
 Existing tools show you individual pipelines. Goldilocks shows you the **whole map**.
 
-Built out of a real operational need — four weeks debugging a single pipeline revealed that the tooling, not the engineer, was the problem.
 
 ---
 
@@ -198,11 +197,11 @@ Built out of a real operational need — four weeks debugging a single pipeline 
 
 MIT — free to use, modify and distribute.
 
----
+
 
 ## *From RAGs to DAGs to Riches* 💅
 
----
+
 
 ## 🎨 About the author
 
