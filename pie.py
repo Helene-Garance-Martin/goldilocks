@@ -21,6 +21,7 @@ from commands.fetch import fetch
 from commands.ask import ask
 from commands.seed import seed
 from commands.run import run
+from commands.sanitise import sanitise
 
 
 
@@ -82,6 +83,8 @@ def main(ctx: typer.Context):
 app.command()(fetch)
 
 app.command()(visualise)
+
+app.command()(sanitise)
 
 app.command()(ping)
 

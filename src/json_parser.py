@@ -2,7 +2,7 @@ from typing import Dict, List, Tuple, Any
 
 
 class JsonParser:
-    """Parser for structured JSON files - DataCamp practice exercise"""
+    """Parser for structured JSON files"""
     def __init__(self, pipeline_data: dict):
         self.data = pipeline_data
         self.workflow_name = ""
@@ -153,16 +153,7 @@ if __name__ == "__main__":
         data = json.load(f)
 
     first_pipeline = data["entries"][0]
-
+    
     parser = JsonParser(first_pipeline)
     result = parser.parse()
-
-    diagram = data_processing_workflow(
-        result["name"],
-        result["components"],
-        result["connections"],
-    )
-
-    print("\n--- MERMAID FROM VISUALISER ---\n")
-    print(diagram)
-
+    print(result)
