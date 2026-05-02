@@ -66,9 +66,3 @@ NEO4J_USER     = "neo4j"
 NEO4J_PASSWORD = "your-neo4j-password-here"
 
 
-# ------------------------------------------------------------
-# Output paths
-# ------------------------------------------------------------
-
-OUTPUT_DIR     = "/content/drive/MyDrive/Goldilocks/pipeline_exports"
-DIAGRAMS_DIR   = "diagrams/"
