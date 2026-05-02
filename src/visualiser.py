@@ -21,62 +21,7 @@ import shutil
 import re
 from pathlib import Path
 from models import Snap, Pipeline, Link
-
-
-# ------------------------------------------------------------
-# TEXT TAGS — per snap type (Mermaid-safe, no emojis)
-# ------------------------------------------------------------
-
-SNAP_ICONS = {
-    "httpclient":   "[HTTP]",
-    "script":       "[SCRIPT]",
-    "pipeexec":     "[PIPE]",
-    "sftp_get":     "[SFTP-IN]",
-    "sftp_put":     "[SFTP-OUT]",
-    "db_select":    "[DB]",
-    "db_insert":    "[DB]",
-    "mapper":       "[MAP]",
-    "filter":       "[FILTER]",
-    "trigger":      "[TRIGGER]",
-    "default":      "[SNAP]",
-}
-
-
-# ------------------------------------------------------------
-# SHAPES — per snap type
-# ------------------------------------------------------------
-
-SNAP_SHAPES = {
-    "httpclient":   ("[\"", "\"]"),       # rectangle
-    "script":       ("[\"", "\"]"),       # rectangle
-    "pipeexec":     ("[[\"", "\"]]"),     # subroutine
-    "sftp_get":     (">\"", "\"]"),       # asymmetric
-    "sftp_put":     (">\"", "\"]"),       # asymmetric
-    "db_select":    ("[(\"", "\")]"),     # cylinder
-    "db_insert":    ("[(\"", "\")]"),     # cylinder
-    "mapper":       ("[\"", "\"]"),       # rectangle
-    "filter":       ("{\"", "\"}"),       # diamond
-    "trigger":      ("(\"", "\")"),       # rounded
-    "default":      ("[\"", "\"]"),       # rectangle
-}
-
-
-# ------------------------------------------------------------
-# CLASSDEFS — colour coding per snap type
-# ------------------------------------------------------------
-
-# CLASSDEFS: add subgraph style to kill the black border
-CLASSDEFS = """    classDef httpclient fill:#D4A017,stroke:#8B6914,color:#1A1A1A
-    classDef script     fill:#4A90D9,stroke:#2C5F8A,color:#FFFFFF
-    classDef pipeexec   fill:#7B68EE,stroke:#483D8B,color:#FFFFFF
-    classDef sftp_get   fill:#F0A500,stroke:#A06800,color:#1A1A1A
-    classDef sftp_put   fill:#E07B00,stroke:#904D00,color:#FFFFFF
-    classDef db         fill:#20B2AA,stroke:#147870,color:#FFFFFF
-    classDef mapper     fill:#5CB85C,stroke:#3D7A3D,color:#FFFFFF
-    classDef filter     fill:#E74C3C,stroke:#922B21,color:#FFFFFF
-    classDef trigger    fill:#95A5A6,stroke:#626D6E,color:#FFFFFF
-    classDef default    fill:#F5F5F5,stroke:#CCCCCC,color:#1A1A1A
-    classDef pipeline   fill:#00BFFF,stroke:#0080AA,color:#1A1A1A"""
+from snap_resolver import SNAP_ICONS, SNAP_SHAPES, CLASSDEFS, resolve_snap_type, get_icon
 
 
 # ------------------------------------------------------------
