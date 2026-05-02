@@ -21,7 +21,8 @@ keywords = [
     "ai", "llm", "graph-database",
     "confluence", "jira", "atlassian",
     "typer", "rich", "pydantic",
-    "airflow", "dag", "etl"
+    "airflow", "dag", "etl",
+    "ci-cd", "github-actions", "automation"
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
