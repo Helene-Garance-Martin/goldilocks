@@ -353,6 +353,7 @@ def generate_diagrams(input_path: str, output_dir: str, direction: str = "LR", f
             path.write_text(diagram, encoding='utf-8')
             render_diagram(path, fmt)
     print(f"\n🐻 Done — {count + 1} diagrams written to {output_dir}")
+    print(f"💡 Tip: open diagrams/goldilocks_combined.mmd for the full system view 🎼")
     
 # ------------------------------------------------------------
 # CLI ENTRY POINT
