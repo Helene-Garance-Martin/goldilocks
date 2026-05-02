@@ -14,7 +14,7 @@
 # Run:
 #   python src/visualiser.py --input export_anonymised.json
 # ============================================================
-
+import time
 import json
 import subprocess 
 import shutil 
@@ -343,18 +343,25 @@ def generate_diagrams(input_path: str, output_dir: str, direction: str = "LR", f
     combined_path.write_text(combined, encoding='utf-8')
     print(f"✅ Combined diagram: {combined_path}")
     render_diagram(combined_path, fmt)
-    # ── Individual diagrams ────────────────────────────────
-    from typer import progressbar
-    with progressbar(pipelines, label="  🎨 Generating") as progress:
-        for pipeline in progress:
+
+# ── Individual diagrams ────────────────────────────────
+    from rich.progress import Progress, BarColumn, TextColumn, TimeElapsedColumn
+
+    with Progress(
+        TextColumn("  🎨 [cyan]{task.description}[/cyan]"),
+        BarColumn(bar_width=40, style="magenta", complete_style="magenta"),
+        TextColumn("[cyan]{task.percentage:>3.0f}%[/cyan]"),
+        TimeElapsedColumn(),
+    ) as progress:
+        task = progress.add_task("Generating diagrams", total=count)
+        for pipeline in pipelines:
             name    = safe_file_name(pipeline.get("name", "pipeline"))
             diagram = build_pipeline_diagram([pipeline], direction)
             path    = output_path / f"{name}.mmd"
             path.write_text(diagram, encoding='utf-8')
             render_diagram(path, fmt)
-    print(f"\n🐻 Done — {count + 1} diagrams written to {output_dir}")
-    print(f"💡 Tip: open diagrams/goldilocks_combined.mmd for the full system view 🎼")
-    
+            progress.advance(task)
+            time.sleep(0.3) # ← delay, adjust if necessary
 # ------------------------------------------------------------
 # CLI ENTRY POINT
 # ------------------------------------------------------------
