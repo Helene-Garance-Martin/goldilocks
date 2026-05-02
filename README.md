@@ -1,44 +1,80 @@
-# 🐻 Goldilocks  
+# 🐻 Goldilocks
 ### Pipeline Intelligence Platform
 
 > *Love your CURLs.*
 
-Goldilocks is a pipeline intelligence platform for **SnapLogic** integration environments. It parses, maps and monitors data pipelines — transforming raw JSON exports into a living **Neo4j graph database** that reveals how your data actually flows.
+Goldilocks is a pipeline intelligence CLI for **SnapLogic** integration environments. It fetches, parses, maps and visualises data pipelines — transforming raw JSON exports into a living **Neo4j graph database** and beautiful **Mermaid diagrams**.
+
+🌐 [goldilocks-cli.org](https://goldilocks-cli.org) · 📦 `pip install goldilocks-pipeline` · 📄 MIT Licence
 
 ---
 
 ## ✨ What it does
 
-- **Parses** SnapLogic pipeline exports (`.slp` / JSON) into structured graph data  
-- **Maps** pipeline relationships — snaps, dependencies, connections — into **Neo4j**  
-- **Generates** visual diagrams of pipeline architecture (Mermaid `.mmd`)  
-- **Monitors** pipeline health and complexity patterns  
-- **Anonymises** sensitive environment data for safe sharing and auditing  
-- *(Coming soon)* **AI agent layer** for natural language pipeline querying  
+- **Fetches** pipeline exports directly from the SnapLogic API
+- **Sanitises** raw exports — strips UI noise and rendering metadata
+- **Anonymises** sensitive data — safe to share publicly or commit to GitHub
+- **Seeds** a Neo4j graph database with pipeline structure
+- **Visualises** pipeline architecture as Mermaid diagrams (`.mmd`, `.png`, `.svg`)
+- **Asks** natural language questions about your pipelines *(coming soon)*
+- **Monitors** pipeline health, complexity and dependency patterns
 
 ---
 
-## 🔄 How it works
+## 🔄 The full flow
 
 ```
-SnapLogic URL → API → JSON → Mermaid Diagram
+fetch → sanitise → anonymise → seed → visualise → ask
+```
+
+Or run everything at once:
+
+```bash
+python pie.py run
 ```
 
 ---
 
-## 🚀 Usage
+## 🚀 Quick start
 
-### Fetch a pipeline
+### Install
+
+```bash
+pip install goldilocks-pipeline
+npm install -g @mermaid-js/mermaid-cli
+```
+
+### Fetch and visualise
 
 ```bash
 python pie.py fetch
+python pie.py sanitise --input export.json
+python pie.py anonymise --input export_clean.json
+python pie.py visualise --input export_anonymised.json
 ```
 
-### Generate diagrams
+### Explore your graph
 
 ```bash
-python pie.py visualise --input pipeline_exports/<project>/export.json
+python pie.py seed --uri neo4j+s://your-instance.databases.neo4j.io
+python pie.py ask "which pipelines share the same auth account?"
 ```
+
+---
+
+## 🛠️ Commands
+
+| Command | Description |
+|---------|-------------|
+| `fetch` | 🌐 Fetch pipeline exports from SnapLogic API |
+| `sanitise` | 🧹 Strip UI noise from raw export |
+| `anonymise` | 🔒 Remove credentials and org names |
+| `seed` | 🌱 Load pipeline graph into Neo4j |
+| `visualise` | 🎨 Generate Mermaid diagrams |
+| `ask` | 🤖 Ask questions about your pipelines |
+| `ping` | 🏓 Keep Neo4j instance alive |
+| `doctor` | 🩺 Check all dependencies |
+| `run` | 🚀 Run full pipeline end to end |
 
 ---
 
@@ -48,79 +84,134 @@ python pie.py visualise --input pipeline_exports/<project>/export.json
 
 ---
 
-## 💡 Why
-
-Integration pipelines are often opaque and difficult to understand.  
-
-Goldilocks makes them **visible**, **readable**, and **explainable**.
-
----
-
 ## 🏗️ Architecture
 
 ```
-SnapLogic Export (JSON)
-        │
-        ▼
-  json_parser.py          ← Parses raw pipeline structure
-        │
-        ▼
-  file_processor.py       ← Cleans, validates, prepares data
-        │
-        ▼
-  goldilocks_seed.py      ← Seeds Neo4j graph database
-        │
-        ▼
-  database_connector.py   ← Neo4j Aura connection layer
-        │
-        ▼
-  diagram_generator.py    ← Generates Mermaid architecture diagrams
-        │
-        ▼
-    Neo4j Aura 🌐         ← Live graph database
+SnapLogic API
+      │
+      ▼
+   fetch               ← downloads and unzips export
+      │
+      ▼
+  sanitise             ← strips UI noise (sanitiser.py)
+      │
+      ▼
+  anonymise            ← removes credentials (anonymiser.py)
+      │
+      ▼
+  json_parser          ← parses pipeline structure
+      │
+      ├──────────────────────────┐
+      ▼                          ▼
+  Neo4j graph              Mermaid diagrams
+  (pipeline_seeder)        (visualiser + diagram_builder)
+      │
+      ▼
+  ask / describe       ← natural language queries (coming soon)
 ```
 
 ---
 
 ## 🛠️ Tech stack
 
-| Tool           | Purpose            |
-|----------------|-------------------|
-| Python         | Core processing   |
-| Neo4j Aura     | Graph database    |
-| Cypher         | Graph queries     |
-| Mermaid        | Pipeline diagrams |
-| Google Colab   | Development       |
+| Tool | Purpose |
+|------|---------|
+| Python 3.10+ | Core processing |
+| Typer + Rich | CLI framework |
+| Pydantic | Data validation |
+| Neo4j Aura | Graph database |
+| Cypher | Graph queries |
+| Mermaid CLI | Diagram rendering |
+| Node.js | mmdc renderer |
+
+---
+
+## ⚙️ Prerequisites
+
+- Python 3.10+
+- Node.js 18+
+- Mermaid CLI: `npm install -g @mermaid-js/mermaid-cli`
+- Neo4j Aura free instance: [console.neo4j.io](https://console.neo4j.io)
+
+---
+
+## 🔐 Environment variables
+
+Copy `config_example.py` and set your values:
+
+```bash
+NEO4J_URI=neo4j+s://xxxxxxxx.databases.neo4j.io
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=your-password
+
+SNAPLOGIC_USERNAME=your.email@yourorg.com
+SNAPLOGIC_PASSWORD=your-snaplogic-password
+```
+
+---
+
+## 🩺 Health check
+
+```bash
+python pie.py doctor
+```
+
+```
+✅ Python 3.12
+✅ Node.js v24.11.1
+✅ mmdc 11.14.0
+✅ Neo4j reachable
+🐻 All systems go!
+```
 
 ---
 
 ## 🗺️ Roadmap
 
-- [x] JSON pipeline parser  
-- [x] Neo4j graph seeding  
-- [x] Mermaid diagram generation  
-- [x] Pipeline anonymiser  
-- [x] PyPI package (`pip install goldilocks`)  
-- [ ] AI agent layer — natural language pipeline queries  
+- [x] SnapLogic API fetcher
+- [x] Pipeline sanitiser
+- [x] Pipeline anonymiser
+- [x] JSON pipeline parser
+- [x] Neo4j graph seeding
+- [x] Mermaid diagram generation (`.mmd`, `.png`, `.svg`)
+- [x] Full CLI (Typer + Rich)
+- [x] PyPI package
+- [ ] AI agent layer — natural language pipeline queries
+- [ ] FastAPI layer — REST API + web demo
+- [ ] Airflow DAG support
+- [ ] Pipeline translation (SnapLogic → Airflow)
+- [ ] CI/CD integration
 
 ---
 
-## 💡 Background
+## 💡 Why Goldilocks?
 
-Goldilocks grew out of a real operational need: when you manage dozens of integration pipelines, understanding how data flows across a complex estate becomes genuinely hard.  
+Integration pipelines are often opaque and difficult to understand. When you manage dozens of pipelines across multiple systems, understanding how data actually flows becomes genuinely hard.
 
-Existing tools show you individual pipelines — Goldilocks shows you the **whole map**.
+Existing tools show you individual pipelines. Goldilocks shows you the **whole map**.
 
-Built as part of an independent R&D practice exploring the intersection of:
+Built out of a real operational need — four weeks debugging a single pipeline revealed that the tooling, not the engineer, was the problem.
 
-- **graph databases**  
-- **data integration**  
-- **AI-assisted operations**
+---
+
+## 📄 Licence
+
+MIT — free to use, modify and distribute.
 
 ---
 
 ## 👩‍💻 Author
 
-**Hélène Martin** — Application & BI Engineer  
-Folkestone, UK 🇫🇷🇬🇧  
-https://github.com/Helene-Garance-Martin
+---
+
+## 🎨 About the author
+
+**Hélène Martin** is a French-born creative technologist and Application & BI Engineer based in Folkestone, UK. She works at the intersection of data engineering, graph databases and creative practice — bringing the same precision and aesthetic sensibility to pipeline architecture as to garment construction, ceramics, film photography and experimental art.
+
+Goldilocks is her flagship open source project — built entirely outside working hours, out of genuine frustration with opaque integration tooling and a belief that infrastructure should be as legible as it is functional.
+
+Goldilocks exists to make the invisible visible — and to demystify the technology that is too often used to intimidate rather than empower. AI, graph databases, pipeline intelligence: none of it should be opaque. Everyone deserves **agency** over the tools that shape their work.
+
+> *"Poetical science"* — Ada Lovelace
+[github.com/Helene-Garance-Martin](https://github.com/Helene-Garance-Martin)  
+[goldilocks-cli.org](https://goldilocks-cli.org)
