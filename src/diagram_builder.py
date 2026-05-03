@@ -6,6 +6,7 @@
 
 import sys
 import os
+import re
 sys.path.insert(0, os.path.dirname(__file__))
 
 from snap_resolver import (
@@ -13,17 +14,30 @@ from snap_resolver import (
     resolve_snap_type, get_icon
 )
 
-# Safe node ID and file name helpers
-import re
-safe_id       = lambda snap_id: "n" + snap_id.replace("-", "_")[:8]
+# ------------------------------------------------------------
+# CONSTANTS
+# ------------------------------------------------------------
+
+STYLED_TYPES = {
+    "httpclient", "script", "pipeexec",
+    "sftp_get", "sftp_put", "mapper",
+    "filter", "trigger"
+}
+
+# ------------------------------------------------------------
+# HELPERS
+# ------------------------------------------------------------
+
+safe_id        = lambda snap_id: "n" + snap_id.replace("-", "_")[:8]
 safe_file_name = lambda name: re.sub(r"[^a-zA-Z0-9_]+", "_", name).strip("_")
+
 
 # ------------------------------------------------------------
 # LABEL FORMATTER
 # ------------------------------------------------------------
 
 def format_label(label: str, snap_type: str) -> str:
-    tag = get_icon(snap_type)
+    tag   = get_icon(snap_type)
     words = label.split()
     lines = []
     current = ""
@@ -70,6 +84,7 @@ def build_pipeline_diagram(pipelines: list, direction: str = "LR") -> str:
         lines.append(f"        direction {direction}")
         lines.append("")
 
+        # ── Snap nodes ────────────────────────────────────
         for snap_id, snap in snap_map.items():
             try:
                 label = snap["property_map"]["info"]["label"]["value"]
@@ -87,14 +102,16 @@ def build_pipeline_diagram(pipelines: list, direction: str = "LR") -> str:
 
         lines.append("")
 
-        for _, link in link_map.items():
-            src = safe_id(link["src_id"])
-            dst = safe_id(link["dst_id"])
-            lines.append(f"        {src} --> {dst}")
+        # ── Snap connections ── list comprehension ────────
+        lines += [
+            f"        {safe_id(link['src_id'])} --> {safe_id(link['dst_id'])}"
+            for link in link_map.values()
+        ]
 
         lines.append("    end")
         lines.append("")
 
+    # ── Parent/child CALLS relationships ──────────────────
     for pipeline in pipelines:
         pipeline_name = pipeline.get("name", "")
         snap_map      = pipeline.get("snap_map", {})
@@ -118,12 +135,10 @@ def build_pipeline_diagram(pipelines: list, direction: str = "LR") -> str:
     lines.append(CLASSDEFS)
     lines.append("")
 
-    for node_id, snap_type in all_snap_types.items():
-        css_class = snap_type if snap_type in [
-            "httpclient", "script", "pipeexec",
-            "sftp_get", "sftp_put", "mapper",
-            "filter", "trigger"
-        ] else "default"
-        lines.append(f"    class {node_id} {css_class}")
+    # ── Assign classDefs ── list comprehension ─────────────
+    lines += [
+        f"    class {node_id} {'default' if snap_type not in STYLED_TYPES else snap_type}"
+        for node_id, snap_type in all_snap_types.items()
+    ]
 
     return "\n".join(lines)
