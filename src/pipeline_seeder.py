@@ -41,6 +41,36 @@ def count_nodes(tx):
     rec = tx.run("MATCH (n) RETURN count(n) AS total").single()
     return rec["total"]
 
+def build_snap(snap_id: str, snap: dict) -> dict:
+    """Extract snap data cleanly from raw SnapLogic JSON."""
+    try:
+        label = snap["property_map"]["info"]["label"]["value"]
+    except (KeyError, TypeError):
+        label = snap_id
+
+    class_id  = snap.get("class_id", "unknown")
+    snap_type = resolve_snap_type(class_id)
+
+    try:
+        error = snap["property_map"]["error"]["error_behavior"]["value"]
+    except (KeyError, TypeError):
+        error = "unknown"
+
+    child_pipeline = ""
+    if snap_type == "pipeexec":
+        try:
+            child_pipeline = snap["property_map"]["settings"]["pipeline"]["value"]
+        except (KeyError, TypeError):
+            pass
+
+    return {
+        "id":             snap_id,
+        "label":          label,
+        "type":           snap_type,
+        "class_id":       class_id,
+        "error":          error,
+        "child_pipeline": child_pipeline,
+    }
 
 # ------------------------------------------------------------
 # Seeder functions
@@ -77,39 +107,11 @@ def seed_pipeline(tx, pipeline: dict) -> dict:
     print(f"  ✅ Pipeline: {pipeline_name}")
 
     # ── Snap nodes (from snap_map) ─────────────────────────
-    snaps = []
     snap_map = pipeline.get("snap_map", {})
-
-    for snap_id, snap in snap_map.items():
-        try:
-            label = snap["property_map"]["info"]["label"]["value"]
-        except (KeyError, TypeError):
-            label = snap_id
-
-        class_id  = snap.get("class_id", "unknown")
-        snap_type = resolve_snap_type(class_id)
-
-        try:
-            error = snap["property_map"]["error"]["error_behavior"]["value"]
-        except (KeyError, TypeError):
-            error = "unknown"
-
-        # Check if this snap calls a child pipeline
-        child_pipeline = None
-        if snap_type == "pipeexec":
-            try:
-                child_pipeline = snap["property_map"]["settings"]["pipeline"]["value"]
-            except (KeyError, TypeError):
-                pass
-
-        snaps.append({
-            "id":             snap_id,
-            "label":          label,
-            "type":           snap_type,
-            "class_id":       class_id,
-            "error":          error,
-            "child_pipeline": child_pipeline or "",
-        })
+    snaps = [
+        build_snap(snap_id, snap)
+        for snap_id, snap in snap_map.items()
+    ]
 
     tx.run(
         """
@@ -126,15 +128,25 @@ def seed_pipeline(tx, pipeline: dict) -> dict:
     print(f"  ✅ Snaps:    {len(snaps)} nodes seeded")
 
     # ── CONNECTS_TO edges (from link_map) ──────────────────
-    edges = []
-    link_map = pipeline.get("link_map", {})
+    # edges = []
+    # link_map = pipeline.get("link_map", {})
 
-    for link_id, link in link_map.items():
-        edges.append({
+    # for link_id, link in link_map.items():
+    #     edges.append({
+    #         "from":    link["src_id"],
+    #         "to":      link["dst_id"],
+    #         "link_id": link_id,
+    #     })
+    # Dict comprehension:
+    link_map = pipeline.get("link_map", {})
+    edges = [
+        {
             "from":    link["src_id"],
             "to":      link["dst_id"],
             "link_id": link_id,
-        })
+        }
+        for link_id, link in link_map.items()
+    ]
 
     tx.run(
         """
