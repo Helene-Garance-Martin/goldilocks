@@ -16,6 +16,40 @@ from snap_resolver import resolve_snap_type
 from renderer import render_diagram
 from diagram_builder import build_pipeline_diagram, safe_file_name
 
+# ------------------------------------------------------------
+# MEMORY WIPE SNAP TYPES
+# ------------------------------------------------------------
+
+WIPES_CONTEXT_TYPES = [
+    "httpclient",
+    "script",
+    "sftp_get",
+    "sftp_put",
+    "binarytodocument",
+]
+
+# ------------------------------------------------------------
+# SNAP MODEL BUILDER
+# ------------------------------------------------------------
+
+def build_snap_model(snap_id: str, snap: dict) -> Snap:
+    """Parse a raw snap dict into a typed Pydantic Snap model."""
+    try:
+        label = snap["property_map"]["info"]["label"]["value"]
+    except (KeyError, TypeError):
+        label = snap_id
+
+    class_id  = snap.get("class_id", "unknown")
+    snap_type = resolve_snap_type(class_id)
+
+    return Snap(
+        id            = snap_id,
+        label         = label,
+        snap_type     = snap_type,
+        class_id      = class_id,
+        wipes_context = snap_type in WIPES_CONTEXT_TYPES
+    )
+
 
 # ------------------------------------------------------------
 # PARSE RAW JSON INTO PYDANTIC MODELS
@@ -26,23 +60,10 @@ def parse_pipeline(raw: dict) -> Pipeline:
     snap_map = raw.get("snap_map", {})
     link_map = raw.get("link_map", {})
 
-    snaps = []
-    for snap_id, snap in snap_map.items():
-        try:
-            label = snap["property_map"]["info"]["label"]["value"]
-        except (KeyError, TypeError):
-            label = snap_id
-
-        class_id  = snap.get("class_id", "unknown")
-        snap_type = resolve_snap_type(class_id)
-
-        snaps.append(Snap(
-            id            = snap_id,
-            label         = label,
-            snap_type     = snap_type,
-            class_id      = class_id,
-            wipes_context = snap_type in ["httpclient", "script", "sftp_get", "sftp_put"]
-        ))
+    snaps = [
+        build_snap_model(snap_id, snap)
+        for snap_id, snap in snap_map.items()
+    ]
 
     links = [
         Link(src_id=l["src_id"], dst_id=l["dst_id"])
@@ -85,8 +106,8 @@ def generate_diagrams(
         print(f"❌ Invalid JSON: {e}")
         return
 
-    pipelines        = data.get("entries", [data])
-    pipelines_typed  = [parse_pipeline(p) for p in pipelines]
+    pipelines       = data.get("entries", [data])
+    pipelines_typed = [parse_pipeline(p) for p in pipelines]
 
     if single:
         pipelines = [p for p in pipelines if single.lower() in p.get("name", "").lower()]
