@@ -164,6 +164,12 @@ def describe_all_from_graph(session) -> str:
     return divider.join(summaries)
 
 
+def describe_token_risks(pipeline_name: str, pipeline: dict) -> str:
+    """Describe token risks for a pipeline using token_analyser."""
+    from token_analyser import find_token_references, format_token_report
+    findings = find_token_references(pipeline)
+    return format_token_report(pipeline_name, findings)
+
 # ------------------------------------------------------------
 # Main
 # ------------------------------------------------------------
