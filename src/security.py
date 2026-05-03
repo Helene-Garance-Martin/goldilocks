@@ -23,6 +23,29 @@ FORBIDDEN_OPERATIONS = [
     "SET", "REMOVE", "DETACH", "CALL"
 ]
 
+# security.py — add these:
+SENSITIVE_KEYS = [
+    "password", "token", "secret", "api_key", "apikey",
+    "client_secret", "bearer", "Authorization",
+    "access_token", "refresh_token", "private_key",
+]
+
+SENSITIVE_INDICATORS = [
+    "bearer", "password", "secret",
+    "token", "credential", "api_key",
+    "authorization", "access_token",
+]
+
+# ------------------------------------------------------------
+# REDACT sensitive values 
+# ------------------------------------------------------------
+
+def redact_sensitive_value(value: str) -> str:
+    """Replace sensitive values with redacted placeholder."""
+    if any(ind in value.lower() for ind in SENSITIVE_INDICATORS):
+        return "***REDACTED***"
+    return value
+
 # ------------------------------------------------------------
 # VALIDATE QUERY — reject writes, enforce read-only
 # ------------------------------------------------------------
