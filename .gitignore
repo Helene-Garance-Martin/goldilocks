@@ -229,4 +229,5 @@ diagrams/*.mmd
 # SnapLogic exports
 *.zip
 pipeline_exports/
-export*.json
+export*.json*.audit.json
+goldilocks_audit*

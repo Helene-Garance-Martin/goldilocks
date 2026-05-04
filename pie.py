@@ -23,6 +23,7 @@ from commands.seed import seed
 from commands.run import run
 from commands.sanitise import sanitise
 from commands.anonymise import anonymise
+from commands.audit import audit
 
 
 
@@ -98,6 +99,8 @@ app.command()(ask)
 app.command()(run)
 
 app.command()(anonymise)
+
+app.command()(audit)
 
 
 # ------------------------------------------------------------
