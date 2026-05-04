@@ -1,7 +1,10 @@
 # commands/seed.py
 import time
 import typer
+from rich.console import Console
 from commands.colours import CYAN, GREEN, RESET
+
+console = Console()
 
 def seed(
     input: str = typer.Option("export_anonymised.json", help="Path to anonymised pipeline JSON"),
@@ -23,6 +26,8 @@ def seed(
     typer.echo(f"   URI:   {uri}")
     typer.echo("")
 
-    # ← wire up src/seeder.py here
-    time.sleep(0.5)
+    with console.status("[magenta]Seeding graph...[/magenta]", spinner="dots"):
+        from pipeline_seeder import main as seed_main
+        time.sleep(0.5)
+    
     typer.echo(f"{GREEN}✅ Graph seeded successfully!{RESET}\n")

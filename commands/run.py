@@ -1,7 +1,10 @@
 # commands/run.py
 import time
 import typer
+from rich.console import Console
 from commands.colours import CYAN, GREEN, RED, GOLD, BOLD, RESET
+
+console = Console()
 
 def run(
     org: str = typer.Option(..., help="Your SnapLogic org name"),
@@ -26,24 +29,19 @@ def run(
         raise typer.Exit()
 
     typer.echo("")
-    typer.echo(f"{CYAN}🌐 Step 1/5 — Fetching pipelines...{RESET}")
-    time.sleep(0.5)
-    typer.echo(f"{GREEN}  ✅ Done{RESET}\n")
 
-    typer.echo(f"{CYAN}🧹 Step 2/5 — Sanitising...{RESET}")
-    time.sleep(0.5)
-    typer.echo(f"{GREEN}  ✅ Done{RESET}\n")
+    steps = [
+        ("🌐 Fetching pipelines",    "Fetching..."),
+        ("🧹 Sanitising",            "Sanitising..."),
+        ("🔒 Anonymising",           "Anonymising..."),
+        ("🌱 Seeding Neo4j",         "Seeding graph..."),
+        ("🎨 Generating diagrams",   "Generating..."),
+    ]
 
-    typer.echo(f"{CYAN}🔒 Step 3/5 — Anonymising...{RESET}")
-    time.sleep(0.5)
-    typer.echo(f"{GREEN}  ✅ Done{RESET}\n")
-
-    typer.echo(f"{CYAN}🌱 Step 4/5 — Seeding Neo4j...{RESET}")
-    time.sleep(0.5)
-    typer.echo(f"{GREEN}  ✅ Done{RESET}\n")
-
-    typer.echo(f"{CYAN}🎨 Step 5/5 — Generating diagrams...{RESET}")
-    time.sleep(0.5)
-    typer.echo(f"{GREEN}  ✅ Done{RESET}\n")
+    for i, (label, spinner_text) in enumerate(steps, 1):
+        typer.echo(f"{CYAN}  Step {i}/5 — {label}...{RESET}")
+        with console.status(f"[magenta]{spinner_text}[/magenta]", spinner="dots"):
+            time.sleep(0.5)
+        typer.echo(f"{GREEN}  ✅ Done{RESET}\n")
 
     typer.echo(f"{GOLD}{BOLD}  🐻 All done! Your pipeline graph is ready.{RESET}\n")
