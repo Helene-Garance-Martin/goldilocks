@@ -231,3 +231,5 @@ diagrams/*.mmd
 pipeline_exports/
 export*.json*.audit.json
 goldilocks_audit*
+export_anonymised.json
+export_clean.json
