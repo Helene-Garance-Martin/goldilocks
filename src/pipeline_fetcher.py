@@ -1,22 +1,19 @@
 # ============================================================
-# 🐻 GOLDILOCKS — Pipeline Fetcher
+# 🫧 GOLDILOCKS — Pipeline Fetcher
 # ============================================================
 # Connects to SnapLogic API, exports pipeline assets,
-# unzips the response and saves files to Google Drive.
-#
-# Run each cell in order in Google Colab.
+# unzips the response and saves files locally.
 # ============================================================
 
 import requests
-from requests.auth import HTTPBasicAuth
 import getpass
 import zipfile
 import io
 from pathlib import Path
+from requests.auth import HTTPBasicAuth
 
 # ------------------------------------------------------------
 # Lambda functions — small, reusable transformation steps
-# Each one does exactly one thing — reads like English!
 # ------------------------------------------------------------
 
 fetch_export   = lambda url, auth: requests.get(url, params={"asset_types": "Pipeline"}, auth=auth)
@@ -34,10 +31,9 @@ save_file      = lambda path, content: Path(path).write_text(content, encoding="
 def fetch_and_save(url, username, password, output_dir):
     """
     Fetches pipeline exports from SnapLogic API.
-    Uses lambdas for each step — reads like English:
-      fetch → check success → check zip → unzip → decode → save
+    fetch → check success → check zip → unzip → decode → save
     """
-    auth     = HTTPBasicAuth(username, password)
+    auth = HTTPBasicAuth(username, password)
 
     print(f"🌐 Fetching pipelines from SnapLogic...")
     response = fetch_export(url, auth)
@@ -53,7 +49,6 @@ def fetch_and_save(url, username, password, output_dir):
         print("❌ Unexpected format — expected zip")
         return
 
-    # Create output folder if it doesn't exist
     Path(output_dir).mkdir(parents=True, exist_ok=True)
 
     z = unzip_response(response)
@@ -68,12 +63,12 @@ def fetch_and_save(url, username, password, output_dir):
 
 
 # ------------------------------------------------------------
-# Run it!
+# CLI ENTRY POINT
 # ------------------------------------------------------------
 
-USERNAME   = input("SnapLogic username: ")
-PASSWORD   = getpass.getpass("SnapLogic password: ")
-URL        = "https://emea.snaplogic.com/api/1/rest/public/project/export/rbo-dev/DIESE/DIESE-Business Continuity"
-OUTPUT_DIR = "/content/drive/MyDrive/Goldilocks/pipeline_exports"
-
-fetch_and_save(URL, USERNAME, PASSWORD, OUTPUT_DIR)
+if __name__ == "__main__":
+    USERNAME   = input("SnapLogic username: ")
+    PASSWORD   = getpass.getpass("SnapLogic password: ")
+    URL        = "https://emea.snaplogic.com/api/1/rest/public/project/export"
+    OUTPUT_DIR = "pipeline_exports/"
+    fetch_and_save(URL, USERNAME, PASSWORD, OUTPUT_DIR)

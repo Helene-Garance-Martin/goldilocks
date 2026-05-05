@@ -23,7 +23,11 @@ from unittest.mock import MagicMock, patch
 # We test each lambda individually — small functions,
 # small tests. One thing at a time!
 
-from goldilocks_pipeline_fetcher import (
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+
+from pipeline_fetcher import (
     is_success,
     is_zip,
     decode_file,
@@ -128,7 +132,7 @@ def make_mock_zip(files: dict) -> bytes:
 class TestFetchAndSave:
     """Integration tests for the full fetch_and_save() function"""
 
-    @patch("goldilocks_pipeline_fetcher.requests.get")
+    @patch("pipeline_fetcher.requests.get")
     def test_saves_files_on_success(self, mock_get, tmp_path):
         """Happy path — API returns a valid zip, files get saved"""
 
@@ -147,9 +151,7 @@ class TestFetchAndSave:
 
         # Run the function with fake credentials and tmp folder
         fetch_and_save(
-            base_url="https://emea.snaplogic.com/api/1/rest/public/project/export",
-            org="rbo-dev",
-            project="DIESE/DIESE-Business Continuity",
+            url="https://emea.snaplogic.com/api/1/rest/public/project/export/rbo-dev/DIESE",
             username="test_user",
             password="test_pass",
             output_dir=tmp_path
@@ -159,7 +161,7 @@ class TestFetchAndSave:
         assert (tmp_path / "export.json").exists()
         assert (tmp_path / "accounts_template.json").exists()
 
-    @patch("goldilocks_pipeline_fetcher.requests.get")
+    @patch("pipeline_fetcher.requests.get")
     def test_saves_correct_content(self, mock_get, tmp_path):
         """Check the file content is saved correctly, not just the filename"""
 
@@ -174,19 +176,18 @@ class TestFetchAndSave:
         mock_get.return_value = mock_response
 
         fetch_and_save(
-            base_url="https://emea.snaplogic.com/api/1/rest/public/project/export",
-            org="rbo-dev",
-            project="DIESE/DIESE-Business Continuity",
+            url="https://emea.snaplogic.com/api/1/rest/public/project/export/rbo-dev/DIESE/DIESE-Business%20Continuity",
             username="test_user",
             password="test_pass",
             output_dir=tmp_path
+
         )
 
         saved = (tmp_path / "export.json").read_text()
         assert '"pipeline"' in saved
         assert "DIESE-Business-Continuity" in saved
 
-    @patch("goldilocks_pipeline_fetcher.requests.get")
+    @patch("pipeline_fetcher.requests.get")
     def test_handles_401_gracefully(self, mock_get, tmp_path):
         """Bad credentials — should not save any files"""
 
@@ -197,18 +198,17 @@ class TestFetchAndSave:
         mock_get.return_value = mock_response
 
         fetch_and_save(
-            base_url="https://emea.snaplogic.com/api/1/rest/public/project/export",
-            org="rbo-dev",
-            project="DIESE/DIESE-Business Continuity",
-            username="wrong_user",
-            password="wrong_pass",
+            url="https://emea.snaplogic.com/api/1/rest/public/project/export/rbo-dev/DIESE/DIESE-Business%20Continuity",
+            username="test_user",
+            password="test_pass",
             output_dir=tmp_path
+
         )
 
         # No files should have been saved
         assert list(tmp_path.iterdir()) == []
 
-    @patch("goldilocks_pipeline_fetcher.requests.get")
+    @patch("pipeline_fetcher.requests.get")
     def test_handles_non_zip_response(self, mock_get, tmp_path):
         """API returns JSON instead of zip — should not save any files"""
 
@@ -219,12 +219,11 @@ class TestFetchAndSave:
         mock_get.return_value = mock_response
 
         fetch_and_save(
-            base_url="https://emea.snaplogic.com/api/1/rest/public/project/export",
-            org="rbo-dev",
-            project="DIESE/DIESE-Business Continuity",
+            url="https://emea.snaplogic.com/api/1/rest/public/project/export/rbo-dev/DIESE/DIESE-Business%20Continuity",
             username="test_user",
             password="test_pass",
             output_dir=tmp_path
+
         )
 
         assert list(tmp_path.iterdir()) == []
