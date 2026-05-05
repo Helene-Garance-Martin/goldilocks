@@ -102,12 +102,10 @@ def describe_pipeline_from_graph(summary: dict) -> str:
     called_by = summary["called_by"]
 
     # What it does — deduplicated step descriptions
-    steps = []
-    for snap in snaps:
-        desc = describe_type(snap.get("type", ""))
-        if desc:
-            steps.append(desc)
-    steps = list(dict.fromkeys(steps))
+    steps = list(dict.fromkeys(
+    desc for snap in snaps
+    if (desc := describe_type(snap.get("type", "")))
+    ))
 
     # Complexity and error handling
     snap_count = len(snaps)
@@ -138,15 +136,13 @@ def describe_pipeline_from_graph(summary: dict) -> str:
     if calls:
         lines.append("")
         lines.append("Relationships:")
-        for child in calls:
-            lines.append(f"  - Calls:     {child}")
+        lines += [f"  - Calls:     {child}" for child in calls]
 
     if called_by:
         if not calls:
             lines.append("")
             lines.append("Relationships:")
-        for parent in called_by:
-            lines.append(f"  - Called by: {parent}")
+        lines += [f"  - Called by: {parent}" for parent in called_by]
 
     return "\n".join(lines)
 
@@ -155,11 +151,11 @@ def describe_all_from_graph(session) -> str:
     """Describe all pipelines in Neo4j."""
     names     = get_all_pipeline_names(session)
     divider   = "\n" + "═" * 40 + "\n"
-    summaries = []
-
-    for name in names:
-        summary = get_pipeline_summary(session, name)
-        summaries.append(describe_pipeline_from_graph(summary))
+    
+    summaries = [
+    describe_pipeline_from_graph(get_pipeline_summary(session, name))
+    for name in names
+    ]
 
     return divider.join(summaries)
 
