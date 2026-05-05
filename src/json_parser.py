@@ -1,4 +1,13 @@
-from typing import Dict, List, Tuple, Any
+# ============================================================
+# 🫧 GOLDILOCKS — Pipeline JSON Parser
+# ============================================================
+# Parses SnapLogic pipeline exports into structured data.
+# Agnostic — works with any pipeline format.
+# ============================================================
+
+
+import json
+from typing import Dict, List, Any
 
 
 class JsonParser:
@@ -110,16 +119,17 @@ class JsonParser:
         return list(self.components.values())
     
     def get_connection_summary(self) -> List[Dict[str, str]]:
-        """Get human-readable connection summary"""
-        summary = []
-        for src_id, dst_id, link_id in self.connections:
-            summary.append({
+        """Get human-readable connection summary."""
+        return [
+            {
                 'from': self.components[src_id],
-                'to': self.components[dst_id],
+                'to':   self.components[dst_id],
                 'link_id': link_id
-            })
-        return summary
-    
+            }
+            for src_id, dst_id, link_id in self.connections
+        ]   
+
+
     def validate(self) -> bool:
         """Validate that the workflow structure makes sense"""
         # Check we have basic data
@@ -141,9 +151,10 @@ class JsonParser:
 
 # Utility function for quick parsing
 def parse_json_file(filepath: str) -> Dict[str, Any]:
-    """Quick function to parse a JSON workflow file"""
-    parser = JsonParser(filepath)
-    return parser.parse()
+    """Quick function to parse a JSON workflow file."""
+    with open(filepath, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    return JsonParser(data).parse()
 
         
 if __name__ == "__main__":
