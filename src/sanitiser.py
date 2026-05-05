@@ -58,11 +58,11 @@ LINK_KEYS_TO_KEEP = {
 # ------------------------------------------------------------
 
 PROPERTY_MAP_KEYS_TO_KEEP = {
-    "info",             # contains the human-readable label
-    "settings",         # snap configuration (URLs, queries etc.)
-    "error",            # error handling behaviour
+    "info",     # contains the human-readable label
+    "error",    # error handling behaviour
+    # "settings" deliberately excluded — can contain script code,
+    # credentials, URLs and other sensitive data
 }
-
 
 # ------------------------------------------------------------
 # LAMBDA FUNCTIONS — small, focused transformations
