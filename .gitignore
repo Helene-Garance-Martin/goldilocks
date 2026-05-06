@@ -237,3 +237,7 @@ src/sensitive_orgs.py
 *.anthropic*
 .env
 anthropic_logs*
+ollama_*
+*.modelfile
+.ollama/
+Modelfile
