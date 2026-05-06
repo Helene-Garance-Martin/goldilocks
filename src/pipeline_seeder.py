@@ -122,7 +122,7 @@ def seed_pipeline(tx, pipeline: dict) -> dict:
             n.type           = s.type,
             n.class_id       = s.class_id,
             n.error          = s.error,
-            n.child_pipeline = s.child_pipeline
+            n.child_pipeline = s.child_pipeline,
             n.wipes_context  = s.wipes_context
         """,
         snaps=snaps
