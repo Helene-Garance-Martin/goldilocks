@@ -1,9 +1,12 @@
 # commands/ask.py
-import typer
 import json
+import typer
 from pathlib import Path
 from typing import Optional
+from rich.console import Console
 from commands.colours import CYAN, GREEN, RED, GOLD, RESET
+
+console = Console()
 
 def ask(
     question: Optional[str] = typer.Argument(None, help="Ask Goldilocks a question about your pipelines"),
@@ -22,9 +25,7 @@ def ask(
         try:
             data      = json.loads(Path(input).read_text())
             pipelines = data.get("entries", [data])
-
-            # Filter by pipeline name if mentioned in question
-            matching = [
+            matching  = [
                 p for p in pipelines
                 if p.get("name", "").lower() in question.lower()
             ] or pipelines
@@ -40,13 +41,14 @@ def ask(
             typer.echo(f"{RED}❌ Failed: {e}{RESET}\n")
             raise typer.Exit(1)
 
-    # ── Neo4j queries (requires connectivity) ─────────────
+    # ── AI agent queries (Neo4j + Anthropic) ──────────────
     try:
-        from describer import describe_from_neo4j
-        answer = describe_from_neo4j()
-        
-        typer.echo(answer)
+        with console.status("[magenta]Consulting the graph...[/magenta]", spinner="dots"):
+            from agent import ask_goldilocks
+            answer = ask_goldilocks(question)
 
+        typer.echo(answer)
+        typer.echo("")
 
     except Exception as e:
         typer.echo(f"{RED}❌ Failed to answer question: {e}{RESET}\n")

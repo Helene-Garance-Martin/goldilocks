@@ -234,3 +234,6 @@ goldilocks_audit*
 export_anonymised.json
 export_clean.json
 src/sensitive_orgs.py
+*.anthropic*
+.env
+anthropic_logs*
