@@ -24,6 +24,7 @@ from commands.run import run
 from commands.sanitise import sanitise
 from commands.anonymise import anonymise
 from commands.audit import audit
+from commands.graph import show_graph
 
 
 
@@ -101,6 +102,8 @@ app.command()(run)
 app.command()(anonymise)
 
 app.command()(audit)
+
+app.command()(show_graph)
 
 
 # ------------------------------------------------------------
