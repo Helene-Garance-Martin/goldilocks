@@ -70,6 +70,7 @@ def build_snap(snap_id: str, snap: dict) -> dict:
         "class_id":       class_id,
         "error":          error,
         "child_pipeline": child_pipeline,
+        "wipes_context":  snap_type in ["httpclient", "script", "sftp_get", "sftp_put", "binarytodocument"],
     }
 
 # ------------------------------------------------------------
@@ -122,6 +123,7 @@ def seed_pipeline(tx, pipeline: dict) -> dict:
             n.class_id       = s.class_id,
             n.error          = s.error,
             n.child_pipeline = s.child_pipeline
+            n.wipes_context  = s.wipes_context
         """,
         snaps=snaps
     )
