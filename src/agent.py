@@ -123,20 +123,30 @@ def ask_goldilocks(question: str) -> str:
     try:
         with GraphDatabase.driver(uri, auth=(user, password)) as driver:
             with driver.session() as session:
+                def ask_goldilocks(question: str) -> str:
+    uri      = os.environ["NEO4J_URI"]
+    user     = os.environ.get("NEO4J_USER", "neo4j")
+    password = os.environ["NEO4J_PASSWORD"]
 
-                # Step 1 — generate Cypher
-                cypher = generate_cypher(question, GRAPH_SCHEMA)
-                print(f"\n🔍 Generated query: {cypher}\n")
+    try:
+        with GraphDatabase.driver(uri, auth=(user, password)) as driver:
+            with driver.session() as session:
 
-                # Step 2 — validate and run safely
-                validate_query(cypher)
-                results = safe_query(session, cypher)
+                # ── Empty graph guard ──────────────────────
+                total = session.run("MATCH (n) RETURN count(n) AS total").single()["total"]
+                if total == 0:
+                    return (
+                        "⚠️  Your graph is empty!\n\n"
+                        "💡 Run the full flow first:\n"
+                        "   python pie.py fetch\n"
+                        "   python pie.py sanitise\n"
+                        "   python pie.py anonymise\n"
+                        "   python pie.py seed\n\n"
+                        "Or run everything at once:\n"
+                        "   python pie.py run"
+                    )
 
-                if not results:
-                    return "🤷 No data found for that question. Try seeding more pipelines first!"
-
-                # Step 3 — explain in plain English
-                return explain_results(question, results)
+                # rest of function unchanged...
 
     except Exception as e:
         return f"❌ {e}"

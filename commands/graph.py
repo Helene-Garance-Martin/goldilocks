@@ -66,8 +66,15 @@ def show_graph(
                 pipelines = [dict(r) for r in pipelines]
 
                 if not pipelines:
-                    typer.echo(f"{RED}❌ No pipelines found{RESET}")
-                    raise typer.Exit(1)
+                    typer.echo(f"{GOLD}⚠️  Your graph is empty!{RESET}")
+                    typer.echo(f"💡 Run the full flow first:")
+                    typer.echo(f"   python pie.py fetch")
+                    typer.echo(f"   python pie.py sanitise")
+                    typer.echo(f"   python pie.py anonymise")
+                    typer.echo(f"   python pie.py seed --uri your-uri")
+                    typer.echo(f"\n   Or: python pie.py run")
+                    raise typer.Exit(0)
+
 
                 # Build tree
                 root = Tree("🫧 [bold gold1]Goldilocks Pipeline Graph[/bold gold1]")

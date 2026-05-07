@@ -180,7 +180,7 @@ def seed_pipeline(tx, pipeline: dict) -> dict:
         "pipeline":       pipeline_name,
         "pipeline_id":    pipeline_id,
         "snaps":          [s["label"] for s in snaps],
-        "edges": [(e["src"], e["dst"]) for e in edges],
+        "edges": [(e["from"], e["to"]) for e in edges],
         "child_pipelines": [s["child_pipeline"] for s in snaps if s["child_pipeline"]],
     }
 
