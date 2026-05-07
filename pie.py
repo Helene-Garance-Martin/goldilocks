@@ -103,7 +103,7 @@ app.command()(anonymise)
 
 app.command()(audit)
 
-app.command()(show_graph)
+app.command(name="show-graph")(show_graph)
 
 
 # ------------------------------------------------------------

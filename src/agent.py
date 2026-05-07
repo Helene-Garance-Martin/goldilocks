@@ -102,6 +102,11 @@ Relationships:
 Snap types: httpclient, script, pipeexec, sftp_get, mapper, filter, trigger, default
 """
 
+# ------------------------------------------------------------
+# FUN TRIGGERS — temperature 1.0 (creative!)
+# ------------------------------------------------------------
+
+FUN_TRIGGERS = ["rags to dags", "boucles d'or", "curls", "just right"]
 
 # ------------------------------------------------------------
 # MAIN AGENT FUNCTION
@@ -112,18 +117,25 @@ def ask_goldilocks(question: str) -> str:
     Ask Goldilocks a natural language question about your pipelines.
     
     Flow:
-    1. Generate Cypher from question (temperature 0.1)
-    2. Run Cypher against Neo4j safely
-    3. Explain results in plain English (temperature 0.5)
+    1. Check for fun triggers (temperature 1.0)
+    2. Generate Cypher from question (temperature 0.1)
+    3. Run Cypher against Neo4j safely
+    4. Explain results in plain English (temperature 0.5)
     """
-    uri      = os.environ["NEO4J_URI"]
-    user     = os.environ.get("NEO4J_USER", "neo4j")
-    password = os.environ["NEO4J_PASSWORD"]
 
-    try:
-        with GraphDatabase.driver(uri, auth=(user, password)) as driver:
-            with driver.session() as session:
-                def ask_goldilocks(question: str) -> str:
+    # ── Fun triggers ───────────────────────────────────────
+    if any(trigger in question.lower() for trigger in FUN_TRIGGERS):
+        response = client.messages.create(
+            model="claude-opus-4-5",
+            max_tokens=200,
+            temperature=1.0,
+            messages=[{
+                "role": "user",
+                "content": f"You are Goldilocks, a witty pipeline intelligence platform. Respond playfully to: {question}"
+            }]
+        )
+        return response.content[0].text.strip()
+
     uri      = os.environ["NEO4J_URI"]
     user     = os.environ.get("NEO4J_USER", "neo4j")
     password = os.environ["NEO4J_PASSWORD"]
@@ -146,7 +158,19 @@ def ask_goldilocks(question: str) -> str:
                         "   python pie.py run"
                     )
 
-                # rest of function unchanged...
+                # ── Generate Cypher ────────────────────────
+                cypher = generate_cypher(question, GRAPH_SCHEMA)
+                print(f"\n🔍 Generated query: {cypher}\n")
+
+                # ── Validate and run safely ────────────────
+                validate_query(cypher)
+                results = safe_query(session, cypher)
+
+                if not results:
+                    return "🤷 No data found for that question. Try seeding more pipelines first!"
+
+                # ── Explain in plain English ───────────────
+                return explain_results(question, results)
 
     except Exception as e:
         return f"❌ {e}"
