@@ -20,7 +20,7 @@ ALLOWED_OPERATIONS = [
 
 FORBIDDEN_OPERATIONS = [
     "CREATE", "DELETE", "MERGE", "DROP",
-    "SET", "REMOVE", "DETACH", "CALL"
+    "SET", "REMOVE", "DETACH", "CALL "
 ]
 
 # security.py — add these:
