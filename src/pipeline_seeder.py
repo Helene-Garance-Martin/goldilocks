@@ -17,8 +17,7 @@ from pathlib import Path
 from neo4j import GraphDatabase
 from snap_resolver import resolve_snap_type
 
-# Extracts date string from SnapLogic's {"$date": "..."} format
-extract_date = lambda d: d.get("$date", "") if isinstance(d, dict) else str(d) if d else ""
+
 
 # ------------------------------------------------------------
 # Lambda functions
@@ -41,7 +40,7 @@ def count_nodes(tx):
     rec = tx.run("MATCH (n) RETURN count(n) AS total").single()
     return rec["total"]
 
-def build_snap(snap_id: str, snap: dict) -> dict:
+def build_snap(pipeline_id: str, snap_id: str, snap: dict) -> dict:
     """Extract snap data cleanly from raw SnapLogic JSON."""
     try:
         label = snap["property_map"]["info"]["label"]["value"]
@@ -64,7 +63,7 @@ def build_snap(snap_id: str, snap: dict) -> dict:
             pass
 
     return {
-        "id":             snap_id,
+        "id": f"{pipeline_id}:{snap_id}",
         "label":          label,
         "type":           snap_type,
         "class_id":       class_id,
@@ -109,8 +108,9 @@ def seed_pipeline(tx, pipeline: dict) -> dict:
 
     # ── Snap nodes (from snap_map) ─────────────────────────
     snap_map = pipeline.get("snap_map", {})
+    
     snaps = [
-        build_snap(snap_id, snap)
+        build_snap(pipeline_id, snap_id, snap)
         for snap_id, snap in snap_map.items()
     ]
 
@@ -130,15 +130,17 @@ def seed_pipeline(tx, pipeline: dict) -> dict:
     print(f"  ✅ Snaps:    {len(snaps)} nodes seeded")
 
     # ── CONNECTS_TO edges (from link_map) ──────────────────
-    # edges = []
-    # link_map = pipeline.get("link_map", {})
+    link_map = pipeline.get("link_map", {})
 
-    # for link_id, link in link_map.items():
-    #     edges.append({
-    #         "from":    link["src_id"],
-    #         "to":      link["dst_id"],
-    #         "link_id": link_id,
-    #     })
+    edges = [
+        {
+            "src": f"{pipeline_id}:{link['src_id']}",
+            "dst": f"{pipeline_id}:{link['dst_id']}",
+            "link_id": link_id,
+        }
+            for link_id, link in link_map.items()
+    ]
+
     # Dict comprehension:
     link_map = pipeline.get("link_map", {})
     edges = [
@@ -153,8 +155,8 @@ def seed_pipeline(tx, pipeline: dict) -> dict:
     tx.run(
         """
         UNWIND $edges AS e
-        MATCH (a:Snap {id: e.from})
-        MATCH (b:Snap {id: e.to})
+        MATCH (a:Snap {id: e.src})
+        MATCH (b:Snap {id: e.dst})
         MERGE (a)-[:CONNECTS_TO {link_id: e.link_id}]->(b)
         """,
         edges=edges
@@ -178,7 +180,7 @@ def seed_pipeline(tx, pipeline: dict) -> dict:
         "pipeline":       pipeline_name,
         "pipeline_id":    pipeline_id,
         "snaps":          [s["label"] for s in snaps],
-        "edges":          [(e["from"], e["to"]) for e in edges],
+        "edges": [(e["src"], e["dst"]) for e in edges],
         "child_pipelines": [s["child_pipeline"] for s in snaps if s["child_pipeline"]],
     }
 
