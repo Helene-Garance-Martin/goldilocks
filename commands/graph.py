@@ -22,11 +22,11 @@ console = Console()
 SNAP_ICONS = {
     "httpclient": "🌐",
     "script":     "📜",
-    "pipeexec":   "📞",
+    "pipeexec":   "🔀",  
     "sftp_get":   "📥",
     "sftp_put":   "📤",
     "mapper":     "🗺️",
-    "filter":     "🔽",
+    "filter":     "⚗️",  
     "trigger":    "⚡",
     "default":    "⚙️",
 }
