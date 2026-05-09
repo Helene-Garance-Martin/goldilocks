@@ -1,4 +1,4 @@
-# ===========================================================
+# ============================================================
 # 🫧 GOLDILOCKS — Pipeline Graph Command
 # ============================================================
 # Renders pipeline relationships as a beautiful Rich tree
@@ -100,10 +100,9 @@ def show_graph(
                     raise typer.Exit(0)
 
                 # ── Build pipeline families ───────────────
-                # Parent pipelines with their children
                 families_result = session.run("""
                     MATCH (parent:Pipeline)-[:CALLS]->(child:Pipeline)
-                    RETURN 
+                    RETURN
                         parent.name AS parent_name,
                         parent.id   AS parent_id,
                         collect({name: child.name, id: child.id}) AS children
@@ -114,7 +113,7 @@ def show_graph(
                 # Orphan pipelines (no parent, no children)
                 orphans_result = session.run("""
                     MATCH (p:Pipeline)
-                    WHERE NOT (p)-[:CALLS]->() 
+                    WHERE NOT (p)-[:CALLS]->()
                     AND NOT ()-[:CALLS]->(p)
                     RETURN p.name AS name, p.id AS id
                     ORDER BY p.name
@@ -131,32 +130,35 @@ def show_graph(
                     # Show families
                     for family in families:
                         parent_stats = get_snap_stats(session, family['parent_id'])
+                        parent_warning = " ⚠️ Large" if parent_stats['snap_count'] > 30 else ""
                         typer.echo(f"  {idx}. 🔗 {family['parent_name']}")
                         typer.echo(
                             f"      ├── 🔑 {family['parent_name']} "
-                            f"({parent_stats['snap_count']} snaps · parent)"
+                            f"({parent_stats['snap_count']} snaps · parent{parent_warning})"
                         )
                         for child in family['children']:
-                            child_stats = get_snap_stats(session, child['id'])
+                            child_stats  = get_snap_stats(session, child['id'])
+                            child_warning = " ⚠️ Large" if child_stats['snap_count'] > 30 else ""
                             typer.echo(
                                 f"      └── 📤 {child['name']} "
-                                f"({child_stats['snap_count']} snaps · child)"
+                                f"({child_stats['snap_count']} snaps · child{child_warning})"
                             )
                         menu_items.append({
-                            'type': 'family',
+                            'type':   'family',
                             'parent': family,
                         })
                         idx += 1
 
                     # Show orphans
                     for orphan in orphans:
-                        orphan_stats = get_snap_stats(session, orphan['id'])
+                        orphan_stats   = get_snap_stats(session, orphan['id'])
+                        orphan_warning = " ⚠️ Large" if orphan_stats['snap_count'] > 30 else ""
                         typer.echo(
                             f"  {idx}. 📊 {orphan['name']} "
-                            f"({orphan_stats['snap_count']} snaps)"
+                            f"({orphan_stats['snap_count']} snaps{orphan_warning})"
                         )
                         menu_items.append({
-                            'type': 'orphan',
+                            'type':     'orphan',
                             'pipeline': orphan,
                         })
                         idx += 1
@@ -169,10 +171,9 @@ def show_graph(
                         default="all"
                     )
 
-                    # Resolve choice
                     if choice == str(idx) or choice.lower() == "all":
                         selected_ids = (
-                            [p['parent_id'] for p in families] +
+                            [f['parent_id'] for f in families] +
                             [c['id'] for f in families for c in f['children']] +
                             [o['id'] for o in orphans]
                         )
@@ -188,12 +189,11 @@ def show_graph(
                                 selected_ids = [chosen['pipeline']['id']]
                         except (ValueError, IndexError):
                             selected_ids = [
-                                p['parent_id'] for p in families
-                                if choice.lower() in p['parent_name'].lower()
+                                f['parent_id'] for f in families
+                                if choice.lower() in f['parent_name'].lower()
                             ]
 
                 else:
-                    # --pipeline flag used
                     result = session.run("""
                         MATCH (p:Pipeline)
                         WHERE toLower(p.name) CONTAINS toLower($name)
@@ -231,9 +231,19 @@ def show_graph(
                     snap_str   = f"{p['snap_count']} snaps"
                     parent_str = f"{p['parents']} parent{'s' if p['parents'] != 1 else ''}"
                     child_str  = f"{p['children']} child{'ren' if p['children'] != 1 else ''}"
-                    pipe_tree  = root.add(
+
+                    # ── Size warning ──────────────────────
+                    if p['snap_count'] > 30:
+                        size_warning = " [yellow]⚠️  Large pipeline[/yellow]"
+                    elif p['snap_count'] > 15:
+                        size_warning = " [yellow]⚡ Complex[/yellow]"
+                    else:
+                        size_warning = ""
+
+                    pipe_tree = root.add(
                         f"[cyan]📊 {p['name']}[/cyan] "
                         f"[dim]({snap_str} · {parent_str} · {child_str})[/dim]"
+                        f"{size_warning}"
                     )
                     render_pipeline(session, p, pipe_tree)
 
