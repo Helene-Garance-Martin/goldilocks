@@ -55,7 +55,7 @@ def render_pipeline(session, p: dict, pipe_tree) -> None:
 
     for snap in snaps:
         icon = SNAP_ICONS.get(snap['type'], "⚙️")
-        risk = "⚠️ " if snap['wipes'] else "✅ "
+        risk = "🔥 " if snap['wipes'] else "✅ "
         pipe_tree.add(f"{risk}{icon} {snap['label']} [{snap['type']}]")
 
     calls = session.run("""

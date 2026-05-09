@@ -93,7 +93,7 @@ def build_finding(snap_id: str, snap: dict) -> dict | None:
         "token_patterns": found_patterns,
         "token_value": redact_sensitive_value(str(snap)),
         "wipes_context":  wipes,
-        "risk":           "⚠️  Wipes context after this snap" if wipes else "✅ Safe",
+        "risk":           "🔥  Wipes context after this snap" if wipes else "✅ Safe",
         "recommendation": "Re-inject token via Mapper after this snap" if wipes else "Token flow looks safe here",
     }
 
