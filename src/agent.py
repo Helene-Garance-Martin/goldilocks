@@ -100,6 +100,11 @@ Relationships:
 - (Snap)-[:CONNECTS_TO]->(Snap)
 
 Snap types: httpclient, script, pipeexec, sftp_get, mapper, filter, trigger, default
+
+Important notes:
+- Pipeline names may use > as separator e.g. 'DayforceReports>Sharepoint'
+- Always use CONTAINS for pipeline name matching, never exact match
+- wipes_context = true means the snap clears document context
 """
 
 # ------------------------------------------------------------
