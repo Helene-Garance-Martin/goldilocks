@@ -59,6 +59,6 @@ def doctor():
     # ── Summary ───────────────────────────────────────────
     typer.echo("")
     if all_ok:
-        typer.echo(f"{GREEN}{BOLD}  🐻 All systems go!{RESET}\n")
+        typer.echo(f"{GREEN}{BOLD}  🫧 All systems go!{RESET}\n")
     else:
-        typer.echo(f"{YELLOW}{BOLD}  🐻 Some issues found — see above{RESET}\n")
+        typer.echo(f"{YELLOW}{BOLD}  🫧 Some issues found — see above{RESET}\n")

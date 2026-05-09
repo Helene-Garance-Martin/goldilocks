@@ -1,5 +1,5 @@
 # ============================================================
-# 🐻 GOLDILOCKS — Mermaid Canonical Style Library
+# 🫧 GOLDILOCKS — Mermaid Canonical Style Library
 # ============================================================
 # A consistent visual language for all Goldilocks pipeline
 # diagrams. Import this as a reference when generating

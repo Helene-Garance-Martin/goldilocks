@@ -16,7 +16,7 @@ def fetch():
     """
     from snaplogic_url import parse_snaplogic_url
 
-    url = typer.prompt("🐻 Paste your SnapLogic URL")
+    url = typer.prompt("🫧 Paste your SnapLogic URL")
 
     try:
         parsed = parse_snaplogic_url(url)

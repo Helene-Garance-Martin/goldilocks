@@ -1,5 +1,5 @@
 # ============================================================
-# 🐻 GOLDILOCKS — Pipeline Sanitiser
+# 🫧 GOLDILOCKS — Pipeline Sanitiser
 # ============================================================
 # Strips UI noise, rendering data and internal SnapLogic
 # metadata from pipeline exports — keeping only what

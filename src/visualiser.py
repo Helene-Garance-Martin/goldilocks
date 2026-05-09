@@ -1,5 +1,5 @@
 # ============================================================
-# 🐻 GOLDILOCKS — Pipeline Visualiser
+# 🫧 GOLDILOCKS — Pipeline Visualiser
 # ============================================================
 # Generates Mermaid diagrams from anonymised pipeline JSON.
 # ============================================================
@@ -149,5 +149,5 @@ def generate_diagrams(
             progress.advance(task)
             time.sleep(0.3)
 
-    print(f"\n🐻 Done — {count + 1} diagrams written to {output_dir}")
+    print(f"\n🫧 Done — {count + 1} diagrams written to {output_dir}")
     print(f"💡 Tip: open diagrams/goldilocks_combined.mmd for the full system view 🎼")

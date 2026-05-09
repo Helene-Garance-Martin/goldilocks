@@ -44,4 +44,4 @@ def run(
             time.sleep(0.5)
         typer.echo(f"{GREEN}  ✅ Done{RESET}\n")
 
-    typer.echo(f"{GOLD}{BOLD}  🐻 All done! Your pipeline graph is ready.{RESET}\n")
+    typer.echo(f"{GOLD}{BOLD}  🫧 All done! Your pipeline graph is ready.{RESET}\n")

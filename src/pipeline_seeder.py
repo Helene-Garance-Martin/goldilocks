@@ -1,5 +1,5 @@
 # ============================================================
-# 🐻 GOLDILOCKS — Pipeline Seeder
+# 🫧 GOLDILOCKS — Pipeline Seeder
 # ============================================================
 # Reads anonymised pipeline export JSON and seeds Neo4j
 # with real Pipeline nodes, Snap nodes and relationships:
@@ -259,7 +259,7 @@ def main():
 
     # Final summary
     print("=" * 50)
-    print(f"🐻 Goldilocks seeding complete!")
+    print(f"🫧 Goldilocks seeding complete!")
     print(f"📊 Total nodes in Neo4j: {total}")
     print()
     for s in summaries:

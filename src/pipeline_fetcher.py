@@ -59,7 +59,7 @@ def fetch_and_save(url, username, password, output_dir):
         save_file(path, decode_file(z, filename))
         print(f"✅ Saved: {filename}")
 
-    print(f"\n🐻 Done! Files saved to: {output_dir}")
+    print(f"\n🫧 Done! Files saved to: {output_dir}")
 
 
 # ------------------------------------------------------------

@@ -1,5 +1,5 @@
 # ============================================================
-# 🐻 GOLDILOCKS — Pipeline Describer (Neo4j version)
+# 🫧 GOLDILOCKS — Pipeline Describer (Neo4j version)
 # ============================================================
 # Queries Neo4j graph to generate plain English pipeline
 # summaries. Much richer than reading JSON directly!
@@ -117,7 +117,7 @@ def describe_pipeline_from_graph(summary: dict) -> str:
 
     # Build output
     lines = [
-        f"🐻 Pipeline: {name}",
+        f"🫧 Pipeline: {name}",
         "━" * 40,
         "",
     ]

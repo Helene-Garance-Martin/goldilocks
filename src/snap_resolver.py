@@ -9,17 +9,17 @@
 # ------------------------------------------------------------
 
 SNAP_ICONS = {
-    "httpclient":   "[HTTP]",
-    "script":       "[SCRIPT]",
-    "pipeexec":     "[PIPE]",
-    "sftp_get":     "[SFTP-IN]",
-    "sftp_put":     "[SFTP-OUT]",
-    "db_select":    "[DB]",
-    "db_insert":    "[DB]",
-    "mapper":       "[MAP]",
-    "filter":       "[FILTER]",
-    "trigger":      "[TRIGGER]",
-    "default":      "[SNAP]",
+    "httpclient":   "🌐",
+    "script":       "📜",
+    "pipeexec":     "🔀",  
+    "sftp_get":     "📥",
+    "sftp_put":     "📤",
+    "db_select":    "🗄️",
+    "db_insert":    "🗄️",
+    "mapper":       "🗺️",
+    "filter":       "⚗️",  
+    "trigger":      "⚡",
+    "default":      "⚙️",
 }
 
 # ------------------------------------------------------------

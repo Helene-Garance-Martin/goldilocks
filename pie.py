@@ -58,7 +58,7 @@ DIVIDER  = f"{YELLOW}  {'─' * 72}{RESET}"
 
 app = typer.Typer(
     name="goldilocks",
-    help="🐻 Goldilocks — Pipeline Intelligence Platform",
+    help="🫧 Goldilocks — Pipeline Intelligence Platform",
     add_completion=False,
 )
 
@@ -78,7 +78,7 @@ def print_logo():
 
 @app.callback(invoke_without_command=True)
 def main(ctx: typer.Context):
-    """🐻 Goldilocks — Pipeline Intelligence Platform"""
+    """🫧 Goldilocks — Pipeline Intelligence Platform"""
     if ctx.invoked_subcommand is None:
         print_logo()
         typer.echo("  Run 'python pie.py --help' to see available commands.\n")
