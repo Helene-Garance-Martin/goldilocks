@@ -208,36 +208,29 @@ __marimo__/
 
 # Goldilocks — sensitive config (never commit!)
 config_real.py
-test-data/
-*.env
-.env*
+src/sensitive_orgs.py
 
 # Raw pipeline exports — never commit!
 pipeline_exports/
 *.slp
 export.json
+export_clean.json
+export_anonymised.json
 accounts_template.json
-export_clean.json
-export_anonymised.json
-config_real.py
 
-scripts/run_neo4j.ps1
-
-# Generated Mermaid diagrams
+# Generated files
 diagrams/*.mmd
-
-# SnapLogic exports
-*.zip
-pipeline_exports/
-export*.json*.audit.json
 goldilocks_audit*
-export_anonymised.json
-export_clean.json
-src/sensitive_orgs.py
+*.zip
+
+# AI tools
 *.anthropic*
-.env
 anthropic_logs*
 ollama_*
 *.modelfile
 .ollama/
 Modelfile
+
+# Environment
+.env
+.env*
