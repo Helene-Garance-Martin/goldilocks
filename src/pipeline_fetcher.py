@@ -56,6 +56,13 @@ def fetch_and_save(url, username, password, output_dir):
 
     for filename in z.namelist():
         path = Path(output_dir) / filename
+        # Ensure nested folders from the ZIP exist before saving
+        # Example:
+        #   pipeline_exports/project-a/my_pipeline.json
+        # Without this, write_text() would fail if parent folders don't exist.
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Decode file from ZIP and save locally as UTF-8 text
         save_file(path, decode_file(z, filename))
         print(f"✅ Saved: {filename}")
 
