@@ -141,16 +141,7 @@ def seed_pipeline(tx, pipeline: dict) -> dict:
             for link_id, link in link_map.items()
     ]
 
-    # Dict comprehension:
-    link_map = pipeline.get("link_map", {})
-    edges = [
-        {
-            "from":    link["src_id"],
-            "to":      link["dst_id"],
-            "link_id": link_id,
-        }
-        for link_id, link in link_map.items()
-    ]
+
 
     tx.run(
         """
@@ -180,7 +171,7 @@ def seed_pipeline(tx, pipeline: dict) -> dict:
         "pipeline":       pipeline_name,
         "pipeline_id":    pipeline_id,
         "snaps":          [s["label"] for s in snaps],
-        "edges": [(e["from"], e["to"]) for e in edges],
+        "edges": [(e["src"], e["dst"]) for e in edges],
         "child_pipelines": [s["child_pipeline"] for s in snaps if s["child_pipeline"]],
     }
 
