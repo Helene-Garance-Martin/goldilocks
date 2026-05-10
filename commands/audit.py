@@ -72,7 +72,10 @@ def audit(
 
         # ── Save JSON ──────────────────────────────────────
         json_path = Path(f"{output}.json")
-        json_path.write_text(json.dumps(all_findings, indent=2))
+        json_path.write_text(
+            json.dumps(all_findings, indent=2),
+            encoding="utf-8"
+        )
         typer.echo(f"\n💾 {GREEN}Saved: {json_path}{RESET}")
 
         # ── Save Markdown ──────────────────────────────────
@@ -94,7 +97,10 @@ def audit(
         ]
 
         md_path = Path(f"{output}.md")
-        md_path.write_text("\n".join(md_lines))
+        md_path.write_text(
+            "\n".join(md_lines),
+            encoding="utf-8"
+        )
         typer.echo(f"💾 {GREEN}Saved: {md_path}{RESET}\n")
 
     except Exception as e:
