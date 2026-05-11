@@ -11,14 +11,18 @@
 SNAP_ICONS = {
     "httpclient":   "🌐",
     "script":       "📜",
-    "pipeexec":     "🔀",  
+    "pipeexec":     "🔀",
     "sftp_get":     "📥",
     "sftp_put":     "📤",
-    "db_select":    "🗄️",
-    "db_insert":    "🗄️",
     "mapper":       "🗺️",
-    "filter":       "⚗️",  
+    "filter":       "⚗️",
     "trigger":      "⚡",
+    "dynamodb":     "🗄️",   
+    "router":       "🔀",   
+    "union":        "🔗",   
+    "copy":         "📋",   
+    "jsonsplitter": "✂️",   
+    "datatransform":"🔄",   
     "default":      "⚙️",
 }
 
@@ -61,15 +65,21 @@ CLASSDEFS = """    classDef httpclient fill:#D4A017,stroke:#8B6914,color:#1A1A1A
 # ------------------------------------------------------------
 
 resolve_snap_type = lambda class_id: (
-    "httpclient" if "httpclient"        in class_id.lower() else
-    "script"     if "script-script"     in class_id.lower() else
-    "pipeexec"   if "pipeexec"          in class_id.lower() else
-    "sftp_get"   if "directorybrowser"  in class_id.lower() else
-    "sftp_get"   if "simpleread"        in class_id.lower() else
-    "mapper"     if "binarytodocument"  in class_id.lower() else
-    "mapper"     if "mapper"            in class_id.lower() else
-    "filter"     if "filter"            in class_id.lower() else
-    "trigger"    if "trigger"           in class_id.lower() else
+    "httpclient"    if "httpclient"        in class_id.lower() else
+    "script"        if "script-script"     in class_id.lower() else
+    "pipeexec"      if "pipeexec"          in class_id.lower() else
+    "sftp_get"      if "directorybrowser"  in class_id.lower() else
+    "sftp_get"      if "simpleread"        in class_id.lower() else
+    "mapper"        if "binarytodocument"  in class_id.lower() else
+    "mapper"        if "mapper"            in class_id.lower() else
+    "filter"        if "filter"            in class_id.lower() else
+    "trigger"       if "trigger"           in class_id.lower() else
+    "dynamodb"      if "dynamodb"          in class_id.lower() else
+    "router"        if "router"            in class_id.lower() else
+    "union"         if "union"             in class_id.lower() else
+    "copy"          if "flow-copy"         in class_id.lower() else
+    "jsonsplitter"  if "jsonsplitter"      in class_id.lower() else
+    "datatransform" if "datatransform"     in class_id.lower() else
     "default"
 )
 

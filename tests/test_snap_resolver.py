@@ -53,14 +53,35 @@ class TestResolveSnapType:
 class TestGetIcon:
     """Tests for snap type icon labels"""
 
+class TestGetIcon:
+    """Tests for snap type icon labels"""
+
     def test_httpclient_icon(self):
-        assert get_icon("httpclient") == "[HTTP]"
+        assert get_icon("httpclient") == "🌐"
 
     def test_script_icon(self):
-        assert get_icon("script") == "[SCRIPT]"
+        assert get_icon("script") == "📜"
 
     def test_mapper_icon(self):
-        assert get_icon("mapper") == "[MAP]"
+        assert get_icon("mapper") == "🗺️"
 
     def test_unknown_gets_default_icon(self):
-        assert get_icon("unknown_type") == "[SNAP]"
+        assert get_icon("unknown_type") == "⚙️"
+    
+    def test_dynamodb(self):
+        assert resolve_snap_type("com-snaplogic-snaps-dynamodb-scan") == "dynamodb"
+
+    def test_router(self):
+        assert resolve_snap_type("com-snaplogic-snaps-flow-router") == "router"
+
+    def test_union(self):
+        assert resolve_snap_type("com-snaplogic-snaps-flow-union") == "union"
+
+    def test_copy(self):
+        assert resolve_snap_type("com-snaplogic-snaps-flow-copy") == "copy"
+
+    def test_jsonsplitter(self):
+        assert resolve_snap_type("com-snaplogic-snaps-transform-jsonsplitter") == "jsonsplitter"
+
+    def test_datatransform(self):
+        assert resolve_snap_type("com-snaplogic-snaps-transform-datatransform") == "datatransform"
