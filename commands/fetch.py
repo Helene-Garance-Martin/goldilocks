@@ -83,8 +83,12 @@ def fetch():
         typer.echo(f"{GREEN}✅ Export downloaded and unzipped!{RESET}")
         typer.echo(f"{GOLD}   JSON ready: {export_json}{RESET}")
         typer.echo("")
-        typer.echo(f"{CYAN}Next:{RESET}")
-        typer.echo(f"  python pie.py visualise --input {export_json}")
+        typer.echo(f"{CYAN}Next steps:{RESET}")
+        typer.echo(f"  1. python pie.py sanitise --input {export_json} --output export_clean.json")
+        typer.echo(f"  2. python pie.py anonymise --input export_clean.json --output export_anonymised.json")
+        typer.echo(f"  3. python pie.py seed --uri your-neo4j-uri")
+        typer.echo(f"  4. python pie.py visualise --input export_anonymised.json")
+        typer.echo(f"\n  Or run everything: python pie.py run")
 
     except Exception as e:
         typer.echo(f"{RED}❌ Fetch failed: {e}{RESET}")
