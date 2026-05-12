@@ -1,0 +1,70 @@
+from rich.tree import Tree
+
+from dag_models import DAGModel
+from snap_resolver import get_icon
+
+
+def build_node_lookup(dag: DAGModel) -> dict:
+    """
+    Build quick lookup:
+    node_id -> DAGNode
+    """
+    return {
+        node.id: node
+        for node in dag.nodes
+    }
+
+
+def render_node(
+    node_id: str,
+    node_lookup: dict,
+    tree,
+    visited: set,
+):
+    """
+    Recursively render DAG flow.
+    """
+
+    node = node_lookup[node_id]
+
+    icon = get_icon(node.type)
+    risk = "🔥 " if node.wipes_context else "✅ "
+
+    # Prevent infinite repeats / merges
+    if node_id in visited:
+        tree.add(f"↩️ {risk}{icon} {node.label}")
+        return
+
+    visited.add(node_id)
+
+    branch = tree.add(f"{risk}{icon} {node.label}")
+
+    for next_id in node.next_ids:
+        render_node(
+            next_id,
+            node_lookup,
+            branch,
+            visited,
+        )
+
+
+def render_dag_ascii(dag: DAGModel) -> Tree:
+    """
+    Render a DAGModel as a Rich tree.
+    """
+
+    root = Tree(f"📊 {dag.pipeline_name}")
+
+    node_lookup = build_node_lookup(dag)
+
+    visited = set()
+
+    for entry_id in dag.entry_points:
+        render_node(
+            entry_id,
+            node_lookup,
+            root,
+            visited,
+        )
+
+    return root
