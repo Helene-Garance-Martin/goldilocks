@@ -21,7 +21,7 @@ with GraphDatabase.driver(uri, auth=(user, password)) as driver:
 
         dag = build_dag(
             session,
-            "Dayforce Job Titles to DynamoDB"
+            "Dayforce to DIESE Job Titles"
         )
 
         tree = render_dag_ascii(dag)
