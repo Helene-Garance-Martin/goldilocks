@@ -14,6 +14,13 @@ def build_node_lookup(dag: DAGModel) -> dict:
         for node in dag.nodes
     }
 
+def get_branch_label(index: int, next_id: str, node_lookup: dict) -> str:
+    """
+    Build a readable branch label using the first snap in that branch.
+    """
+    child = node_lookup[next_id]
+    return f"🌿 Branch {index} → {child.label}"
+
 
 def render_node(
     node_id: str,
@@ -41,7 +48,9 @@ def render_node(
 
     if len(node.next_ids) > 1:
         for index, next_id in enumerate(node.next_ids, start=1):
-            branch_tree = branch.add(f"🌿 Branch {index}")
+            branch_tree = branch.add(
+                get_branch_label(index, next_id, node_lookup)
+            )
             render_node(
                 next_id,
                 node_lookup,
