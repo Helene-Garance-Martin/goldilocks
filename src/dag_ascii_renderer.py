@@ -39,13 +39,23 @@ def render_node(
 
     branch = tree.add(f"{risk}{icon} {node.label}")
 
-    for next_id in node.next_ids:
-        render_node(
-            next_id,
-            node_lookup,
-            branch,
-            visited,
-        )
+    if len(node.next_ids) > 1:
+        for index, next_id in enumerate(node.next_ids, start=1):
+            branch_tree = branch.add(f"🌿 Branch {index}")
+            render_node(
+                next_id,
+                node_lookup,
+                branch_tree,
+                visited,
+            )
+    else:
+        for next_id in node.next_ids:
+            render_node(
+                next_id,
+                node_lookup,
+                branch,
+                visited,
+            )
 
 
 def render_dag_ascii(dag: DAGModel) -> Tree:
