@@ -11,6 +11,7 @@
 #   - Direction chosen per diagram (LR or TD)
 # ============================================================
 
+from snap_resolver import resolve_snap_type
 
 # ------------------------------------------------------------
 # DIRECTION
@@ -157,31 +158,6 @@ CLASSDEFS = """
     classDef datatransform fill:#82E0AA,stroke:#239B56,color:#1A1A1A
 """
 
-
-# ------------------------------------------------------------
-# SNAP TYPE RESOLVER
-# ------------------------------------------------------------
-# Maps SnapLogic class_id → canonical type name
-
-def resolve_snap_type(class_id: str) -> str:
-    """
-    Given a SnapLogic class_id, return the canonical Goldilocks type.
-    Used to look up colours, shapes and classDefs.
-    """
-    # Lambda — one-liner check for each type
-    is_type = lambda keyword: keyword in class_id.lower()
-
-    if is_type("httpclient"):   return "httpclient"
-    if is_type("script"):       return "script"
-    if is_type("pipeexec"):     return "pipeexec"
-    if is_type("mapper"):       return "mapper"
-    if is_type("sftp-get"):     return "sftp_get"
-    if is_type("sftp-put"):     return "sftp_put"
-    if is_type("db-select"):    return "db_select"
-    if is_type("db-insert"):    return "db_insert"
-    if is_type("filter"):       return "filter"
-    if is_type("trigger"):      return "trigger"
-    return "default"
 
 
 # ------------------------------------------------------------
