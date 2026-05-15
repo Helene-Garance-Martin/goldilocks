@@ -51,6 +51,12 @@ NODE_SHAPES = {
     "filter":       "{{label}}",        # diamond      — Filter / Router
     "trigger":      "({label})",        # rounded      — Trigger / Scheduler
     "default":      "[{label}]",        # rectangle    — fallback
+    "dynamodb":     "([{label}])",
+    "router":       "{{label}}",
+    "union":        "([{label}])",
+    "copy":         "[{label}]",
+    "jsonsplitter": "[{label}]",
+    "datatransform":"[{label}]",
 }
 
 
@@ -74,6 +80,12 @@ COLOURS_BY_TYPE = {
     "filter":       {"fill": "#E74C3C", "stroke": "#922B21", "color": "#FFFFFF"},   # red         — Filter/Router
     "trigger":      {"fill": "#95A5A6", "stroke": "#626D6E", "color": "#FFFFFF"},   # grey        — Trigger
     "default":      {"fill": "#F5F5F5", "stroke": "#AAAAAA", "color": "#1A1A1A"},   # light grey  — unknown
+    "dynamodb":      {"fill": "#6A5ACD", "stroke": "#3D348B", "color": "#FFFFFF"},
+    "router":        {"fill": "#E74C3C", "stroke": "#922B21", "color": "#FFFFFF"},
+    "union":         {"fill": "#C39BD3", "stroke": "#7D3C98", "color": "#1A1A1A"},
+    "copy":          {"fill": "#AED6F1", "stroke": "#2E86C1", "color": "#1A1A1A"},
+    "jsonsplitter":  {"fill": "#F9E79F", "stroke": "#B7950B", "color": "#1A1A1A"},
+    "datatransform": {"fill": "#82E0AA", "stroke": "#239B56", "color": "#1A1A1A"},
 }
 
 
@@ -137,6 +149,12 @@ CLASSDEFS = """
     classDef filter    fill:#E74C3C,stroke:#922B21,color:#FFFFFF
     classDef trigger   fill:#95A5A6,stroke:#626D6E,color:#FFFFFF
     classDef default   fill:#F5F5F5,stroke:#AAAAAA,color:#1A1A1A
+    classDef dynamodb      fill:#6A5ACD,stroke:#3D348B,color:#FFFFFF
+    classDef router        fill:#E74C3C,stroke:#922B21,color:#FFFFFF
+    classDef union         fill:#C39BD3,stroke:#7D3C98,color:#1A1A1A
+    classDef copy          fill:#AED6F1,stroke:#2E86C1,color:#1A1A1A
+    classDef jsonsplitter  fill:#F9E79F,stroke:#B7950B,color:#1A1A1A
+    classDef datatransform fill:#82E0AA,stroke:#239B56,color:#1A1A1A
 """
 
 
