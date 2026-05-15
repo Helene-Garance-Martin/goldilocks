@@ -9,20 +9,9 @@ import os
 import re
 sys.path.insert(0, os.path.dirname(__file__))
 
-from snap_resolver import (
-    SNAP_SHAPES, CLASSDEFS,
-    resolve_snap_type, get_icon
-)
+from snap_resolver import resolve_snap_type, get_icon
+from mermaid_styles import NODE_SHAPES as SNAP_SHAPES, CLASSDEFS
 
-# ------------------------------------------------------------
-# CONSTANTS
-# ------------------------------------------------------------
-
-STYLED_TYPES = {
-    "httpclient", "script", "pipeexec",
-    "sftp_get", "sftp_put", "mapper",
-    "filter", "trigger"
-}
 
 # ------------------------------------------------------------
 # HELPERS
@@ -96,13 +85,14 @@ def build_pipeline_diagram(pipelines: list, direction: str = "LR") -> str:
             node_id   = safe_id(snap_id)
             formatted = format_label(label, snap_type)
 
-            shape_open, shape_close = SNAP_SHAPES.get(snap_type, SNAP_SHAPES["default"])
-            lines.append(f"        {node_id}{shape_open}{formatted}{shape_close}")
+            shape    = SNAP_SHAPES.get(snap_type, SNAP_SHAPES["default"])
+            node_str = shape.replace("{label}", formatted)
+            lines.append(f"        {node_id}{node_str}")
             all_snap_types[node_id] = snap_type
 
         lines.append("")
 
-        # ── Snap connections ── list comprehension ────────
+        # ── Snap connections ──────────────────────────────
         lines += [
             f"        {safe_id(link['src_id'])} --> {safe_id(link['dst_id'])}"
             for link in link_map.values()
@@ -132,12 +122,13 @@ def build_pipeline_diagram(pipelines: list, direction: str = "LR") -> str:
                     pass
 
     lines.append("")
+
+    # ── ClassDefs and assignments — OUTSIDE all subgraphs ──
     lines.append(CLASSDEFS)
     lines.append("")
 
-    # ── Assign classDefs ── list comprehension ─────────────
     lines += [
-        f"    class {node_id} {'default' if snap_type not in STYLED_TYPES else snap_type}"
+        f"    class {node_id} {snap_type}"
         for node_id, snap_type in all_snap_types.items()
     ]
 

@@ -11,6 +11,10 @@
 #   - Direction chosen per diagram (LR or TD)
 # ============================================================
 
+import sys
+import os
+sys.path.insert(0, os.path.dirname(__file__))
+
 from snap_resolver import resolve_snap_type
 
 # ------------------------------------------------------------
