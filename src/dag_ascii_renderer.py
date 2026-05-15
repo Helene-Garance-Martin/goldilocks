@@ -49,7 +49,7 @@ def render_node(
     if len(node.next_ids) > 1:
         for index, next_id in enumerate(node.next_ids, start=1):
             branch_tree = branch.add(
-                get_branch_label(index, next_id, node_lookup)
+            f"\n{get_branch_label(index, next_id, node_lookup)}\n"
             )
             render_node(
                 next_id,
