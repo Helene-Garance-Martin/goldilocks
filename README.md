@@ -1,7 +1,7 @@
 # Goldilocks
 ### Semantic Topology for Integration Pipelines
 
-> *Love your CURLs.*
+> *Love your cURLs.*
 
 Goldilocks is a graph-native exploration toolkit for integration environments.
 
