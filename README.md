@@ -1,7 +1,7 @@
 # Goldilocks
 ### Semantic Topology for Integration Pipelines
 
-> *Love your cURLs.*
+## *From RAGs to DAGs to Riches*🍓
 
 Goldilocks is a graph-native exploration toolkit for integration environments.
 
@@ -97,11 +97,10 @@ Goldilocks is currently experimental and focused on:
 
 SnapLogic is the current ingestion target, but the architecture is designed to support additional orchestration platforms.
 
----
 
-## *From RAGs to DAGs to Riches* 💅
 
 ---
+
 
 ## 🎨 About the author
 
