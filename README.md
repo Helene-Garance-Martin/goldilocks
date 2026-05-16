@@ -1,54 +1,88 @@
-# 🐻 Goldilocks  
-### Pipeline Intelligence Platform
+# Goldilocks
+### Semantic Topology for Integration Pipelines
 
 > *Love your CURLs.*
 
-Goldilocks is a pipeline intelligence CLI for **SnapLogic** integration environments. It fetches, parses and visualises data pipelines — transforming raw JSON exports into a **Neo4j graph** and elegant **Mermaid diagrams**.
+Goldilocks is a graph-native exploration toolkit for integration environments.
 
-🌐 https://goldilocks-cli.org · 📦 `pip install goldilocks-pipeline` · 📄 MIT Licence
-
----
-
-## ✨ What it does
-
-- **Fetches** pipeline exports directly from the SnapLogic API  
-- **Sanitises** raw exports — strips UI noise and rendering metadata  
-- **Anonymises** sensitive data — safe to share publicly or commit to GitHub  
-- **Visualises** pipeline architecture as Mermaid diagrams (`.mmd`, `.png`, `.svg`)  
-- *(Coming soon)* **AI agent layer** for natural language pipeline querying  
+It transforms orchestration exports into **semantic execution topology** using **Neo4j traversal**, producing readable DAG views, Mermaid diagrams, and operational graph context from otherwise fragmented pipeline structures.
 
 ---
 
-## 🔄 The flow
+## ✨ Current capabilities
 
+- Parse SnapLogic pipeline exports
+- Sanitise and anonymise exports
+- Seed orchestration graphs into Neo4j
+- Traverse `CONNECTS_TO` relationships
+- Generate semantic DAG models
+- Render readable ASCII execution trees
+- Generate Mermaid topology diagrams
+- Detect branching and merge behaviour
+- Explore parent/child pipeline relationships
+
+---
+
+## 🔄 Conceptual flow
+
+```text
+raw export
+    ↓
+sanitise
+    ↓
+anonymise
+    ↓
+Neo4j graph
+    ↓
+traversal
+    ↓
+semantic DAG
+    ↓
+renderers
 ```
-fetch → sanitise → anonymise → visualise → ask
-```
 
 ---
 
-## 🚀 Quick start
+## 🌿 Semantic topology
 
-```bash
-python pie.py fetch
-python pie.py visualise --input pipeline_exports/<project>/export.json
-```
+Raw orchestration exports are often noisy and structurally fragmented.
+
+Goldilocks distinguishes between:
+
+- **export topology**  
+  how orchestration tools serialise pipelines
+
+and:
+
+- **semantic execution topology**  
+  how work actually flows through the system
+
+This enables more readable execution views, branch-aware traversal, and graph-native operational understanding.
 
 ---
 
-## 🎨 Example Output
+## 🎨 Example outputs
 
-![Goldilocks Combined Diagram](docs/goldilocks_combined.png)
+### Mermaid topology (raw export view)
 
-💡 Tip: open the combined diagram to see the full system flow
+![Goldilocks Mermaid Diagram](docs/goldilocks_combined.png)
+
+### ASCII DAG traversal (semantic execution view)
+
+![Goldilocks ASCII DAG](docs/goldilocks_ascii_dag.png)
 
 ---
 
-## 💡 Why Goldilocks?
+## 🧭 Current status
 
-Integration pipelines are often opaque and difficult to understand.  
+Goldilocks is currently experimental and focused on:
 
-Goldilocks makes them **visible**, **readable**, and **explainable** — showing not just individual pipelines, but the **whole map**.
+- traversal modelling
+- renderer architecture
+- orchestration visibility
+- semantic graph exploration
+
+SnapLogic is the current ingestion target, but the architecture is designed to support additional orchestration platforms.
 
 ---
 
@@ -58,12 +92,12 @@ Goldilocks makes them **visible**, **readable**, and **explainable** — showing
 
 ## 🎨 About the author
 
-**Hélène Martin** — Application & BI Engineer  
-Folkestone, UK 🇫🇷🇬🇧  
+**Hélène Martin**  
+Artist-filmmaker and Application & BI Engineer  
+Folkestone, UK 🇫🇷🇬🇧
 
-Goldilocks was built outside working hours, out of frustration with opaque integration tooling — and a belief that infrastructure should be as legible as it is functional.
+Goldilocks emerged from a desire to make orchestration systems more legible, navigable, and explainable.
 
-> *"Poetical science"* — Ada Lovelace  
+> *"Poetical science"* — Ada Lovelace
 
-https://github.com/Helene-Garance-Martin  
-https://goldilocks-cli.org
+GitHub: https://github.com/Helene-Garance-Martin
