@@ -26,7 +26,7 @@ It transforms orchestration exports into **semantic execution topology** using *
 ## 🔄 Conceptual flow
 
 ```text
-Json export
+JSON export
     ↓
 sanitise
     ↓
@@ -78,7 +78,7 @@ This enables more readable execution views, branch-aware traversal, and graph-na
 
 ---
 
-### Neo4j Graph (traversal execution view)
+### Graph traversal and Neo4j relationship modelling
 
 
 
