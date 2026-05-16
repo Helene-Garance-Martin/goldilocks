@@ -32,26 +32,16 @@ safe_file_name = lambda name: re.sub(
 # ------------------------------------------------------------
 
 def format_label(label: str, snap_type: str) -> str:
-    """
-    Format Mermaid labels with icons + line wrapping.
-    """
-
     tag = get_icon(snap_type)
-
     words = label.split()
-
     lines = []
     current = ""
 
     for word in words:
-
         if len(current) + len(word) + 1 > 28:
-
             if current:
                 lines.append(current.strip())
-
             current = word
-
         else:
             current += " " + word
 
@@ -59,7 +49,6 @@ def format_label(label: str, snap_type: str) -> str:
         lines.append(current.strip())
 
     formatted = "<br/>".join(lines)
-
     return f"{tag}<br/>{formatted}"
 
 
@@ -71,27 +60,20 @@ def sort_pipelines_for_display(pipelines: list) -> list:
     """
     Put parent/orchestrator pipelines first,
     then child/detail pipelines.
-
-    Parent pipelines are detected via Pipeline Execute snaps.
     """
 
     def has_child_call(pipeline: dict) -> bool:
-
         snap_map = pipeline.get("snap_map", {})
-
         return any(
-            resolve_snap_type(
-                snap.get("class_id", "")
-            ) == "pipeexec"
-
+            resolve_snap_type(snap.get("class_id", "")) == "pipeexec"
             for snap in snap_map.values()
         )
 
     return sorted(
         pipelines,
         key=lambda p: (
-            not has_child_call(p),     # parents first
-            p.get("name", "").lower()
+            not has_child_call(p),
+            p.get("name", "").lower(),
         )
     )
 
@@ -107,8 +89,11 @@ def build_pipeline_diagram(
     """
     Build a complete Mermaid diagram from pipeline data.
 
-    Each pipeline becomes a subgraph.
-    Parent/child relationships shown between subgraphs.
+    Outer diagram is top-to-bottom so parent/child pipeline
+    hierarchy reads vertically.
+
+    Each pipeline subgraph keeps its own direction, usually LR,
+    so execution still reads left-to-right inside the box.
     """
 
     lines = []
@@ -122,15 +107,14 @@ def build_pipeline_diagram(
         "'clusterBorder': '#CCCCCC'}}}%%"
     )
 
-    lines.append(f"flowchart {direction}")
+    # IMPORTANT:
+    # Only one top-level flowchart declaration.
+    # TD gives parent/child pipeline hierarchy a vertical layout.
+    lines.append("flowchart TD")
     lines.append("")
 
     all_snap_types = {}
     pipeline_node_ids = {}
-
-    # --------------------------------------------------------
-    # Sort pipelines so orchestrators appear first
-    # --------------------------------------------------------
 
     pipelines = sort_pipelines_for_display(pipelines)
 
@@ -139,22 +123,17 @@ def build_pipeline_diagram(
     # --------------------------------------------------------
 
     for pipeline in pipelines:
-
         pipeline_name = pipeline.get("name", "Unknown")
-
         snap_map = pipeline.get("snap_map", {})
         link_map = pipeline.get("link_map", {})
 
-        p_safe_id = "p_" + safe_file_name(
-            pipeline_name
-        )[:16]
-
+        p_safe_id = "p_" + safe_file_name(pipeline_name)[:16]
         pipeline_node_ids[pipeline_name] = p_safe_id
 
-        lines.append(
-            f'    subgraph {p_safe_id}["{pipeline_name}"]'
-        )
+        lines.append(f'    subgraph {p_safe_id}["{pipeline_name}"]')
 
+        # Internal pipeline flow direction.
+        # Usually LR so each pipeline reads left-to-right.
         lines.append(f"        direction {direction}")
         lines.append("")
 
@@ -163,38 +142,25 @@ def build_pipeline_diagram(
         # ----------------------------------------------------
 
         for snap_id, snap in snap_map.items():
-
             try:
                 label = snap["property_map"]["info"]["label"]["value"]
-
             except (KeyError, TypeError):
                 label = snap_id
 
             class_id = snap.get("class_id", "unknown")
-
             snap_type = resolve_snap_type(class_id)
-
             node_id = safe_id(snap_id)
 
-            formatted = format_label(
-                label,
-                snap_type
-            )
+            formatted = format_label(label, snap_type)
 
             shape = SNAP_SHAPES.get(
                 snap_type,
                 SNAP_SHAPES["default"]
             )
 
-            node_str = shape.replace(
-                "{label}",
-                formatted
-            )
+            node_str = shape.replace("{label}", formatted)
 
-            lines.append(
-                f"        {node_id}{node_str}"
-            )
-
+            lines.append(f"        {node_id}{node_str}")
             all_snap_types[node_id] = snap_type
 
         lines.append("")
@@ -204,13 +170,9 @@ def build_pipeline_diagram(
         # ----------------------------------------------------
 
         for link in link_map.values():
-
             src = safe_id(link["src_id"])
             dst = safe_id(link["dst_id"])
-
-            lines.append(
-                f"        {src} --> {dst}"
-            )
+            lines.append(f"        {src} --> {dst}")
 
         lines.append("    end")
         lines.append("")
@@ -220,26 +182,15 @@ def build_pipeline_diagram(
     # --------------------------------------------------------
 
     for pipeline in pipelines:
-
         pipeline_name = pipeline.get("name", "")
-
         snap_map = pipeline.get("snap_map", {})
-
-        p_safe_id = pipeline_node_ids.get(
-            pipeline_name,
-            ""
-        )
+        p_safe_id = pipeline_node_ids.get(pipeline_name, "")
 
         for snap in snap_map.values():
-
-            snap_type = resolve_snap_type(
-                snap.get("class_id", "")
-            )
+            snap_type = resolve_snap_type(snap.get("class_id", ""))
 
             if snap_type == "pipeexec":
-
                 try:
-
                     child_name = (
                         snap["property_map"]
                         ["settings"]
@@ -248,30 +199,14 @@ def build_pipeline_diagram(
                     )
 
                     for other in pipelines:
-
                         other_name = other.get("name", "")
 
-                        if (
-                            child_name in other_name
-                            or other_name in child_name
-                        ):
+                        if child_name in other_name or other_name in child_name:
+                            child_safe_id = pipeline_node_ids.get(other_name, "")
 
-                            child_safe_id = (
-                                pipeline_node_ids.get(
-                                    other_name,
-                                    ""
-                                )
-                            )
-
-                            if (
-                                child_safe_id
-                                and child_safe_id != p_safe_id
-                            ):
-
+                            if child_safe_id and child_safe_id != p_safe_id:
                                 lines.append(
-                                    f"    {p_safe_id} "
-                                    f"-.->|CALLS| "
-                                    f"{child_safe_id}"
+                                    f"    {p_safe_id} -.->|CALLS| {child_safe_id}"
                                 )
 
                 except (KeyError, TypeError):
@@ -283,12 +218,8 @@ def build_pipeline_diagram(
     # ClassDefs
     # --------------------------------------------------------
 
-    lines.append(
-        "    %% ── Style classes ─────────────────────────────"
-    )
-
+    lines.append("    %% ── Style classes ─────────────────────────────")
     lines.append(CLASSDEFS)
-
     lines.append("")
 
     # --------------------------------------------------------
@@ -296,9 +227,6 @@ def build_pipeline_diagram(
     # --------------------------------------------------------
 
     for node_id, snap_type in all_snap_types.items():
-
-        lines.append(
-            f"    class {node_id} {snap_type}"
-        )
+        lines.append(f"    class {node_id} {snap_type}")
 
     return "\n".join(lines)
