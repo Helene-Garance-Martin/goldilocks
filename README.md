@@ -26,7 +26,7 @@ It transforms orchestration exports into **semantic execution topology** using *
 ## 🔄 Conceptual flow
 
 ```text
-json export
+Json export
     ↓
 sanitise
     ↓
