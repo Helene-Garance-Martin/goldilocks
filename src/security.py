@@ -13,14 +13,15 @@ from typing import Any
 # ------------------------------------------------------------
 
 ALLOWED_OPERATIONS = [
-    "MATCH", "RETURN", "WHERE", "WITH",
+    "MATCH", "OPTIONAL MATCH", "RETURN", "WHERE", "WITH",
     "ORDER BY", "LIMIT", "SKIP", "COUNT",
-    "COLLECT", "DISTINCT", "AS", "AND", "OR"
+    "COLLECT", "DISTINCT", "AS", "AND", "OR", "UNWIND"
 ]
 
 FORBIDDEN_OPERATIONS = [
     "CREATE", "DELETE", "MERGE", "DROP",
-    "SET", "REMOVE", "DETACH", "CALL "
+    "SET", "REMOVE", "DETACH", "CALL ",
+    "LOAD CSV", "APOC", "FOREACH"
 ]
 
 # security.py — add these:
