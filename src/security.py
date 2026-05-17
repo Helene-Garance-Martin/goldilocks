@@ -24,6 +24,12 @@ FORBIDDEN_OPERATIONS = [
     "LOAD CSV", "APOC", "FOREACH"
 ]
 
+FORBIDDEN_PATTERNS = [
+    "file://",
+    "http://",
+    "https://",
+]
+
 # security.py — add these:
 SENSITIVE_KEYS = [
     "password", "token", "secret", "api_key", "apikey",
