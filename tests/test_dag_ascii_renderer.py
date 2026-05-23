@@ -27,4 +27,6 @@ with GraphDatabase.driver(uri, auth=(user, password)) as driver:
         tree = render_dag_ascii(dag)
 
         console.print(tree)
+        console.print()
+        console.print()
         

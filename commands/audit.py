@@ -59,6 +59,8 @@ def audit(
             )
 
         console.print(table)
+        console.print()
+        console.print()
 
         # ── Summary ────────────────────────────────────────
         risks  = [f for f in all_findings if f["wipes_context"]]

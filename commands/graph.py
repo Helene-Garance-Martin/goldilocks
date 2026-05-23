@@ -248,6 +248,8 @@ def show_graph(
                     render_pipeline(session, p, pipe_tree)
 
                 console.print(root)
+                console.print()
+                console.print()
                 typer.echo("")
 
     except Exception as e:
