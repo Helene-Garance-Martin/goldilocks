@@ -175,30 +175,71 @@ def seed_pipeline(tx, pipeline: dict) -> dict:
         "child_pipelines": [s["child_pipeline"] for s in snaps if s["child_pipeline"]],
     }
 
+def normalise_pipeline_ref(ref: str) -> str:
+    """
+    Convert a Pipeline Execute reference into a likely pipeline name.
+
+    Example:
+    ../shared/SnapLogic Get LastCompleted
+    → SnapLogic Get LastCompleted
+    """
+    return ref.split("/")[-1].strip()
 
 def seed_parent_child_relationships(tx, summaries: list) -> int:
     """
     After all pipelines are seeded, create CALLS relationships
     between parent pipelines and their children.
 
-    A Pipeline Execute snap calling "DIESE-SHAREPOINT" means:
-    (SharePointToken)-[:CALLS]->(DIESE-SHAREPOINT)
+    A Pipeline Execute snap calling:
+
+        ../shared/SnapLogic Get LastCompleted
+
+    means:
+
+        (ParentPipeline)-[:CALLS]->(SnapLogic Get LastCompleted)
+
+    if the child pipeline exists in the graph.
     """
+
     count = 0
+
     for summary in summaries:
-        for child_name in summary["child_pipelines"]:
+
+        for child_ref in summary["child_pipelines"]:
+
+            child_name = normalise_pipeline_ref(child_ref)
+
             result = tx.run(
                 """
                 MATCH (parent:Pipeline {id: $parent_id})
-                MATCH (child:Pipeline {name: $child_name})
+
+                MATCH (child:Pipeline)
+                WHERE child.name = $child_name
+                   OR child.path ENDS WITH "/" + $child_name
+
                 MERGE (parent)-[:CALLS]->(child)
+
                 RETURN count(*) AS created
                 """,
-                parent_id  = summary["pipeline_id"],
-                child_name = child_name
+                parent_id=summary["pipeline_id"],
+                child_name=child_name,
             )
-            count += 1
-            print(f"  ✅ CALLS: {summary['pipeline']} → {child_name}")
+
+            record = result.single()
+            created = record["created"] if record else 0
+
+            if created:
+                count += created
+                print(
+                    f"  ✅ CALLS: "
+                    f"{summary['pipeline']} → {child_name}"
+                )
+            else:
+                print(
+                    f"  ⚪ Unresolved CALLS reference: "
+                    f"{summary['pipeline']} → {child_name}"
+                )
+
     return count
 
 
