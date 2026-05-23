@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 
 
+
 class DAGNode(BaseModel):
     id: str
     label: str
@@ -22,4 +23,5 @@ class DAGModel(BaseModel):
     entry_points: list[str] = Field(default_factory=list)
     exit_points: list[str] = Field(default_factory=list)
     branches: list[list[str]] = Field(default_factory=list)
+    external_references: list[str] = []
     complexity: str = "simple"

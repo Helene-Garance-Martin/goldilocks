@@ -1,5 +1,3 @@
-from neo4j import GraphDatabase
-
 from dag_models import DAGModel, DAGNode, DAGEdge
 
 
@@ -23,6 +21,7 @@ def build_dag(session, pipeline_name: str) -> DAGModel:
             s.label AS label,
             s.type AS type,
             s.wipes_context AS wipes_context,
+            s.child_pipeline AS child_pipeline,
             collect(next.id) AS next_ids
         """,
         name=pipeline_name
@@ -37,6 +36,7 @@ def build_dag(session, pipeline_name: str) -> DAGModel:
 
     nodes = []
     edges = []
+    external_references = []
 
     all_targets = set()
 
@@ -53,6 +53,11 @@ def build_dag(session, pipeline_name: str) -> DAGModel:
         )
 
         nodes.append(node)
+
+        if row["type"] == "pipeexec":
+            ref = row["child_pipeline"]
+            if ref and ref not in external_references:
+                external_references.append(ref)
 
         for next_id in next_ids:
             edges.append(
@@ -81,5 +86,6 @@ def build_dag(session, pipeline_name: str) -> DAGModel:
         edges=edges,
         entry_points=entry_points,
         exit_points=exit_points,
+        external_references=external_references,
         complexity="simple",
     )

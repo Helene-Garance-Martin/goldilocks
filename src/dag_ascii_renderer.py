@@ -78,6 +78,16 @@ def render_dag_ascii(dag: DAGModel) -> Tree:
 
     visited = set()
 
+    if dag.external_references:
+        root.add("")
+
+        refs = root.add("📎 Referenced pipelines")
+
+        for ref in dag.external_references:
+            refs.add(f"⚪ {ref}")
+
+        root.add("")
+
     for entry_id in dag.entry_points:
         render_node(
             entry_id,
