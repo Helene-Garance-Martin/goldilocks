@@ -275,7 +275,7 @@ def main():
         return
 
     print(f"📂 Loading: {export_path}")
-    with open(export_path, 'r', encoding='utf-8') as f:
+    with open(export_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
     # Handle project export (entries[]) or single pipeline
@@ -287,6 +287,8 @@ def main():
         print()
 
         summaries = []
+        skipped_count = 0
+
         with driver.session() as session:
 
             # Seed all pipelines and snaps
@@ -296,6 +298,9 @@ def main():
 
                 if summary:
                     summaries.append(summary)
+                else:
+                    skipped_count += 1
+
                 print()
 
             # Create parent → child CALLS relationships
@@ -307,16 +312,24 @@ def main():
 
     # Final summary
     print("=" * 50)
-    print(f"🫧 Goldilocks seeding complete!")
+    print("📊 Seed summary")
+    print(f"🌱 New pipelines: {len(summaries)}")
+    print(f"⚠️  Skipped:       {skipped_count}")
     print(f"📊 Total nodes in Neo4j: {total}")
     print()
+
+    if len(summaries) == 0:
+        print("🫧 No new pipelines seeded.")
+        print("Graph unchanged.")
+        print()
+        return
+
+    print("🫧 Goldilocks seeding complete!")
+    print()
+
     for s in summaries:
         print(f"  Pipeline: {s['pipeline']}")
         print(f"  Snaps:    {', '.join(s['snaps'])}")
         if s["child_pipelines"]:
             print(f"  Calls:    {', '.join(s['child_pipelines'])}")
         print()
-
-
-if __name__ == "__main__":
-    main()
