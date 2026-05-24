@@ -76,7 +76,7 @@ def build_snap(pipeline_id: str, snap_id: str, snap: dict) -> dict:
 # Seeder functions
 # ------------------------------------------------------------
 
-def seed_pipeline(tx, pipeline: dict) -> dict:
+def seed_pipeline(tx, pipeline: dict) -> dict | None:
     """
     Write transaction — seeds one pipeline into Neo4j:
     - MERGE Pipeline node
@@ -88,6 +88,19 @@ def seed_pipeline(tx, pipeline: dict) -> dict:
     pipeline_id   = pipeline["instance_id"]
     pipeline_name = pipeline["name"]
     pipeline_path = pipeline.get("path", "")
+
+    # ── Guardrail: skip already seeded pipelines ───────────
+    existing = tx.run(
+        """
+        MATCH (p:Pipeline {id: $id})
+        RETURN p.name AS name
+        """,
+        id=pipeline_id,
+    ).single()
+
+    if existing:
+        print(f"  ⚠️ Already seeded: {existing['name']}")
+        return None
 
     # ── Pipeline node ──────────────────────────────────────
     tx.run(
@@ -104,11 +117,12 @@ def seed_pipeline(tx, pipeline: dict) -> dict:
         created = extract_date(pipeline.get("create_time")),
         updated = extract_date(pipeline.get("update_time")),
     )
+
     print(f"  ✅ Pipeline: {pipeline_name}")
 
     # ── Snap nodes (from snap_map) ─────────────────────────
     snap_map = pipeline.get("snap_map", {})
-    
+
     snaps = [
         build_snap(pipeline_id, snap_id, snap)
         for snap_id, snap in snap_map.items()
@@ -279,7 +293,9 @@ def main():
             for pipeline in pipelines:
                 print(f"🌱 Seeding: {pipeline.get('name', 'unknown')}")
                 summary = session.execute_write(seed_pipeline, pipeline)
-                summaries.append(summary)
+
+                if summary:
+                    summaries.append(summary)
                 print()
 
             # Create parent → child CALLS relationships
