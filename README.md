@@ -5,7 +5,7 @@
 
 Goldilocks is a graph-native exploration toolkit for integration environments.
 
-It transforms orchestration exports into **semantic execution topology** using **Neo4j traversal**, producing readable DAG views, Mermaid diagrams, dependency discovery, and operational graph context from otherwise fragmented pipeline structures.
+It transforms orchestration exports into **semantic execution topology** using **Neo4j traversal**, producing readable DAG views, Mermaid diagrams, dependency discovery, and operational graph context from fragmented pipeline structures.
 
 ---
 
@@ -62,7 +62,7 @@ This enables more readable execution views, branch-aware traversal, and graph-na
 
 Goldilocks also surfaces **referenced topology**:
 
-- external pipelines discovered through Pipeline Execute snaps
+- external pipelines referenced through Pipeline Execute snaps
 - dependencies that may not yet exist in the loaded graph
 - orchestration relationships that are present in the source system but not yet modelled as graph relationships
 
