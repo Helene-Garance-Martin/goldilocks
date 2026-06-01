@@ -93,6 +93,16 @@ def sanitise_settings(settings: dict) -> dict:
         for k, v in settings.items()
     }
 
+def is_disabled_snap(snap: dict) -> bool:
+    """Return True when a SnapLogic snap is disabled."""
+    execution_mode = (
+        snap.get("property_map", {})
+        .get("settings", {})
+        .get("execution_mode", {})
+        .get("value")
+    )
+
+    return execution_mode == "Disabled"
 
 def sanitise_snap(snap: dict) -> dict:
     """Strip noise from a single snap — keep only essential fields."""
@@ -120,16 +130,29 @@ def sanitise_pipeline(pipeline: dict) -> dict:
     """Strip noise from a full pipeline entry."""
     clean = filter_keys(pipeline, PIPELINE_KEYS_TO_KEEP)
 
+    active_snap_ids = set()
+
     if "snap_map" in clean and is_dict(clean["snap_map"]):
+        active_snap_ids = {
+            snap_id
+            for snap_id, snap in clean["snap_map"].items()
+            if not is_disabled_snap(snap)
+        }
+
         clean["snap_map"] = {
             snap_id: sanitise_snap(snap)
             for snap_id, snap in clean["snap_map"].items()
+            if snap_id in active_snap_ids
         }
 
     if "link_map" in clean and is_dict(clean["link_map"]):
         clean["link_map"] = {
             link_id: sanitise_link(link)
             for link_id, link in clean["link_map"].items()
+            if (
+                link.get("src_id") in active_snap_ids
+                and link.get("dst_id") in active_snap_ids
+            )
         }
 
     return clean
