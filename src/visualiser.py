@@ -149,5 +149,20 @@ def generate_diagrams(
             progress.advance(task)
             time.sleep(0.3)
 
-    print(f"\n🫧 Done — {count + 1} diagrams written to {output_dir}")
-    print(f"💡 Tip: open diagrams/goldilocks_combined.mmd for the full system view 🎼")
+        resolved_output = output_path.resolve()
+    combined_view = resolved_output / "goldilocks_combined.mmd"
+
+    total_diagrams = count + 1 if not single else count
+
+    print()
+    print(f"🫧 Done — {total_diagrams} diagram{'s' if total_diagrams != 1 else ''} generated")
+    print(f"📁 Output folder:")
+    print(f"   {resolved_output}")
+
+    if not single:
+        print(f"🗺️  Full system view:")
+        print(f"   {combined_view}")
+    else:
+        print("🗺️  Single pipeline view generated in the output folder.")
+
+    print()
