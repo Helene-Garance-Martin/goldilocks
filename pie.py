@@ -8,6 +8,8 @@
 import os
 import typer
 from typer import Context
+from rich.console import Console
+from rich.panel import Panel
 import time
 import sys
 from commands.colours import YELLOW, GOLD, GREEN, RED, CYAN, RESET, BOLD
@@ -50,7 +52,7 @@ LOGO = f"""{YELLOW}
    ▀████▀                                              
 {RESET}"""
 
-TAGLINE  = f"{GOLD}  Pipeline Intelligence Platform  •  curl · parse · graph · monitor{RESET}"
+TAGLINE  = f"{GOLD} Semantic Topology • traverse · graph · discover{RESET}"
 DIVIDER  = f"{YELLOW}  {'─' * 72}{RESET}"
 
 # ------------------------------------------------------------
@@ -62,6 +64,8 @@ app = typer.Typer(
     help="🫧 Goldilocks — Pipeline Intelligence Platform",
     add_completion=False,
 )
+
+console = Console()
 
 # ------------------------------------------------------------
 # Helper — print logo
@@ -77,12 +81,77 @@ def print_logo():
 # COMMANDS
 # ------------------------------------------------------------
 
+@app.command()
+def welcome():
+    """
+    🐻 Show the Goldilocks welcome screen.
+    """
+
+    welcome_text = f"""
+{LOGO}
+
+Semantic Topology • traverse • graph • discover
+
+────────────────────────────────────────────────────────────
+
+Welcome, Explorer.
+
+The forest contains pipelines,
+dependencies, routers and forgotten context.
+
+Goldilocks helps you navigate them.
+
+🔑 Before you begin
+
+Configure your credentials as environment variables:
+
+  NEO4J_URI
+  NEO4J_USER
+  NEO4J_PASSWORD
+
+Optional, for SnapLogic exports:
+
+  SNAPLOGIC_ORG
+  SNAPLOGIC_USERNAME
+  SNAPLOGIC_PASSWORD
+
+🌲 Suggested path
+
+  goldilocks doctor
+  goldilocks fetch
+  goldilocks sanitise
+  goldilocks anonymise
+  goldilocks seed
+  goldilocks stats
+  goldilocks audit
+  goldilocks show-graph
+
+⚠ Beware
+
+  Some paths contain routers.
+  Some paths contain child pipelines.
+  Some paths contain vanished context.
+
+Proceed with curiosity.
+"""
+
+    console.print(
+        Panel(
+            welcome_text,
+            title="🐻 Welcome",
+            border_style="green",
+            expand=False,
+        )
+    )
+
 @app.callback(invoke_without_command=True)
 def main(ctx: typer.Context):
     """🫧 Goldilocks — Pipeline Intelligence Platform"""
     if ctx.invoked_subcommand is None:
         print_logo()
-        typer.echo("  Run 'python pie.py --help' to see available commands.\n")
+        typer.echo(
+            "  Run 'goldilocks welcome' to begin, or 'goldilocks --help' to see available commands.\n"
+        )
 
 app.command()(fetch)
 
