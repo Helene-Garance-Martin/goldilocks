@@ -44,7 +44,7 @@ LOGO = f"""{YELLOW}
                                                        
  ▄   ▄▄▄▄      ▄▄          ▄▄                          
  ▀██████▀       ██    █▄    ██                         
-   ██   ▄       ██    ██ ▀▀ ██             ▄▄          
+   ██   ▄       ██    ██ ▀▀ ██             ▄▄         
    ██  ██ ▄███▄ ██ ▄████ ██ ██ ▄███▄ ▄███▀ ██ ▄█▀ ▄██▀█
    ██  ██ ██ ██ ██ ██ ██ ██ ██ ██ ██ ██    ████   ▀███▄
    ▀█████▄▀███▀▄██▄█▀███▄██▄██▄▀███▀▄▀███▄▄██ ▀█▄█▄▄██▀
@@ -83,66 +83,28 @@ def print_logo():
 
 @app.command()
 def welcome():
-    """
-    🐻 Show the Goldilocks welcome screen.
-    """
 
-    welcome_text = f"""
-{LOGO}
+    console.print("\n🐻 Welcome to\n")
+    time.sleep(0.15)
 
-Semantic Topology • traverse • graph • discover
+    print_logo()
+    time.sleep(0.45)
 
-────────────────────────────────────────────────────────────
-
-Welcome, Explorer.
-
-The forest contains pipelines,
-dependencies, routers and forgotten context.
-
-Goldilocks helps you navigate them.
-
-🔑 Before you begin
-
-Configure your credentials as environment variables:
-
-  NEO4J_URI
-  NEO4J_USER
-  NEO4J_PASSWORD
-
-Optional, for SnapLogic exports:
-
-  SNAPLOGIC_ORG
-  SNAPLOGIC_USERNAME
-  SNAPLOGIC_PASSWORD
-
-🌲 Suggested path
-
-  goldilocks doctor
-  goldilocks fetch
-  goldilocks sanitise
-  goldilocks anonymise
-  goldilocks seed
-  goldilocks stats
-  goldilocks audit
-  goldilocks show-graph
-
-⚠ Beware
-
-  Some paths contain routers.
-  Some paths contain child pipelines.
-  Some paths contain vanished context.
-
-Proceed with curiosity.
-"""
-
-    console.print(
-        Panel(
-            welcome_text,
-            title="🐻 Welcome",
-            border_style="green",
-            expand=False,
-        )
-    )
+    for line in [
+        "Pipeline Intelligence Platform",
+        "",
+        "Semantic Topology for Integration Pipelines",
+        "",
+        "From RAGs to DAGs to Riches 🍓",
+        "",
+        "Get started:",
+        "  goldilocks doctor",
+        "",
+        "Need help?",
+        "  goldilocks --help",
+    ]:
+        console.print(line)
+        time.sleep(0.12)
 
 @app.callback(invoke_without_command=True)
 def main(ctx: typer.Context):
