@@ -268,7 +268,7 @@ def main():
     pwd  = os.environ["NEO4J_PASSWORD"]
 
     # Load anonymised pipeline export
-    export_path = Path("export_anonymised.json")
+    export_path = Path(os.getenv("GOLDILOCKS_EXPORT_PATH", "export_anonymised.json"))
     if not export_path.exists():
         print(f"❌ File not found: {export_path}")
         print("   Run: python pie.py anonymise --input export.json first!")

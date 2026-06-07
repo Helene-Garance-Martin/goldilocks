@@ -81,7 +81,8 @@ def seed(
             spinner="dots",
         ):
             from pipeline_seeder import main
-
+            os.environ["GOLDILOCKS_EXPORT_PATH"] = input
+            
             main()
 
         typer.echo(
