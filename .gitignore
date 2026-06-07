@@ -213,9 +213,7 @@ src/sensitive_orgs.py
 # Raw pipeline exports — never commit!
 pipeline_exports/
 *.slp
-export.json
-export_clean.json
-export_anonymised.json
+export*.json
 accounts_template.json
 
 # Generated files
