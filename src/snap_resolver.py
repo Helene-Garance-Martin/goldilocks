@@ -21,7 +21,11 @@ SNAP_ICONS = {
     "router":       "🔀",   
     "union":        "🔗",   
     "copy":         "📋",   
-    "jsonsplitter": "✂️",   
+    "jsonsplitter": "✂️", 
+    "groupbyfields":"🧮",
+    "recordreplay": "⏪",
+    "sort":         "↕️",
+    "unique":       "◇",  
     "datatransform":"🔄",   
     "default":      "⚙️",
 }
@@ -79,6 +83,10 @@ resolve_snap_type = lambda class_id: (
     "union"         if "union"             in class_id.lower() else
     "copy"          if "flow-copy"         in class_id.lower() else
     "jsonsplitter"  if "jsonsplitter"      in class_id.lower() else
+    "groupbyfields" if "groupbyfields"      in class_id.lower() else
+    "recordreplay"  if "recordreplay"       in class_id.lower() else
+    "sort"          if "sort"               in class_id.lower() else
+    "unique"        if "unique"             in class_id.lower() else
     "datatransform" if "datatransform"     in class_id.lower() else
     "default"
 )
