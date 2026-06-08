@@ -10,6 +10,7 @@
 import os
 import sys
 import time
+from rich.text import Text
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 import typer
@@ -303,12 +304,15 @@ def show_graph(
 
                     render_pipeline(session, p, pipe_tree)
 
+                
                 if reveal:
                     with console.capture() as capture:
                         console.print(root)
 
-                    for line in capture.get().splitlines():
-                        console.print(line)
+                    text = capture.get()
+
+                    for line in text.splitlines():
+                        console.print(Text.from_ansi(line))
                         time.sleep(delay)
                 else:
                     console.print(root)
