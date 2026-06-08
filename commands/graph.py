@@ -286,21 +286,21 @@ def show_graph(
                     downstream = get_downstream_calls(session, p["id"])
 
                     if upstream:
-                        pipe_tree.add(
-                            "[dim]↑ Called by: " + ", ".join(upstream) + "[/dim]"
-                        )
+                        upstream_branch = pipe_tree.add("[green]🌿 Upstream[/green]")
+
+                        for name in upstream:
+                            upstream_branch.add(f"[dim]{name}[/dim]")
 
                     if downstream:
-                        pipe_tree.add(
-                            "[dim]↓ Calls: "
-                            + ", ".join(
+                        downstream_branch = pipe_tree.add("[magenta]🌿 Downstream[/magenta]")
+
+                        for d in downstream:
+                            label = (
                                 f"{d['name']} ×{d['occurrences']}"
                                 if d["occurrences"] > 1
                                 else d["name"]
-                                for d in downstream
                             )
-                            + "[/dim]"
-                        )
+                            downstream_branch.add(f"[dim]{label}[/dim]")
 
                     render_pipeline(session, p, pipe_tree)
 
