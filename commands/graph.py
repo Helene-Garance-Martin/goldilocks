@@ -9,6 +9,7 @@
 
 import os
 import sys
+import time
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 import typer
@@ -45,6 +46,33 @@ def get_snap_stats(session, pipeline_id: str) -> dict:
     """, pid=pipeline_id).single()
     return dict(result)
 
+def get_upstream_names(session, pipeline_id: str) -> list[str]:
+    result = session.run("""
+        MATCH (parent:Pipeline)-[:CALLS]->(p:Pipeline {id: $pid})
+        RETURN parent.name AS name
+        ORDER BY parent.name
+    """, pid=pipeline_id)
+    return [r["name"] for r in result]
+
+
+def get_downstream_calls(session, pipeline_id: str) -> list[dict]:
+    result = session.run("""
+        MATCH (p:Pipeline {id: $pid})-[:HAS_SNAP]->(s:Snap)
+        WHERE s.child_pipeline IS NOT NULL
+          AND s.child_pipeline <> ""
+
+        WITH split(s.child_pipeline, "/")[-1] AS child_name,
+             count(*) AS occurrences
+
+        MATCH (child:Pipeline)
+        WHERE child.name = child_name
+           OR child.path ENDS WITH "/" + child_name
+
+        RETURN child.name AS name,
+               occurrences
+        ORDER BY child.name
+    """, pid=pipeline_id)
+    return [dict(r) for r in result]
 
 def render_pipeline(session, p: dict, pipe_tree) -> None:
     """Render snaps and calls for a single pipeline into a Rich tree."""
@@ -58,17 +86,22 @@ def render_pipeline(session, p: dict, pipe_tree) -> None:
         risk = "🔥 " if snap['wipes'] else "✅ "
         pipe_tree.add(f"{risk}{icon} {snap['label']} [{snap['type']}]")
 
-    calls = session.run("""
-        MATCH (p:Pipeline {id: $pid})-[:CALLS]->(child:Pipeline)
-        RETURN child.name AS name
-    """, pid=p['id'])
+    calls = get_downstream_calls(session, p["id"])
+
+    if calls:
+        pipe_tree.add("[dim]── topology[/dim]")
 
     for call in calls:
-        pipe_tree.add(f"[purple]🔀 Calls → {call['name']}[/purple]")
+        suffix = f" ×{call['occurrences']}" if call["occurrences"] > 1 else ""
+        pipe_tree.add(
+            f"[purple]🔀 Calls → {call['name']}{suffix}[/purple]"
+        )
 
 
 def show_graph(
     pipeline: str = typer.Option(None, help="Filter by pipeline name"),
+    reveal: bool = typer.Option(False, "--reveal", help="Reveal graph line by line"),
+    delay: float = typer.Option(0.035, "--delay", help="Delay between revealed lines"),
 ):
     """
     🌳 Render pipeline relationships as a terminal graph.
@@ -82,24 +115,21 @@ def show_graph(
     try:
         from neo4j import GraphDatabase
 
-        uri      = os.environ["NEO4J_URI"]
-        user     = os.environ.get("NEO4J_USER", "neo4j")
+        uri = os.environ["NEO4J_URI"]
+        user = os.environ.get("NEO4J_USER", "neo4j")
         password = os.environ["NEO4J_PASSWORD"]
 
         with GraphDatabase.driver(uri, auth=(user, password)) as driver:
             with driver.session() as session:
-
-                # ── Empty graph guard ─────────────────────
                 total = session.run(
                     "MATCH (p:Pipeline) RETURN count(p) AS total"
                 ).single()["total"]
 
                 if total == 0:
                     typer.echo(f"{GOLD}⚠️  Your graph is empty!{RESET}")
-                    typer.echo(f"💡 Run: python pie.py seed --uri your-uri")
+                    typer.echo("💡 Run: python pie.py seed --uri your-uri")
                     raise typer.Exit(0)
 
-                # ── Build pipeline families ───────────────
                 families_result = session.run("""
                     MATCH (parent:Pipeline)-[:CALLS]->(child:Pipeline)
                     RETURN
@@ -110,56 +140,63 @@ def show_graph(
                 """)
                 families = [dict(r) for r in families_result]
 
-                # Orphan pipelines (no parent, no children)
                 orphans_result = session.run("""
                     MATCH (p:Pipeline)
                     WHERE NOT (p)-[:CALLS]->()
-                    AND NOT ()-[:CALLS]->(p)
+                      AND NOT ()-[:CALLS]->(p)
                     RETURN p.name AS name, p.id AS id
                     ORDER BY p.name
                 """)
                 orphans = [dict(r) for r in orphans_result]
 
-                # ── Pipeline selector ─────────────────────
                 if not pipeline:
                     typer.echo(f"{GOLD}📋 Available pipelines:{RESET}\n")
 
                     idx = 1
                     menu_items = []
 
-                    # Show families
                     for family in families:
-                        parent_stats = get_snap_stats(session, family['parent_id'])
-                        parent_warning = " ⚠️ Large" if parent_stats['snap_count'] > 30 else ""
+                        parent_stats = get_snap_stats(session, family["parent_id"])
+                        parent_warning = (
+                            " ⚠️ Large" if parent_stats["snap_count"] > 30 else ""
+                        )
+
                         typer.echo(f"  {idx}. 🔗 {family['parent_name']}")
                         typer.echo(
                             f"      ├── 🔑 {family['parent_name']} "
                             f"({parent_stats['snap_count']} snaps · parent{parent_warning})"
                         )
-                        for child in family['children']:
-                            child_stats  = get_snap_stats(session, child['id'])
-                            child_warning = " ⚠️ Large" if child_stats['snap_count'] > 30 else ""
+
+                        children = family["children"]
+                        for i, child in enumerate(children):
+                            branch = "└──" if i == len(children) - 1 else "├──"
+                            child_stats = get_snap_stats(session, child["id"])
+                            child_warning = (
+                                " ⚠️ Large" if child_stats["snap_count"] > 30 else ""
+                            )
                             typer.echo(
-                                f"      └── 📤 {child['name']} "
+                                f"      {branch} 📤 {child['name']} "
                                 f"({child_stats['snap_count']} snaps · child{child_warning})"
                             )
+
                         menu_items.append({
-                            'type':   'family',
-                            'parent': family,
+                            "type": "family",
+                            "parent": family,
                         })
                         idx += 1
 
-                    # Show orphans
                     for orphan in orphans:
-                        orphan_stats   = get_snap_stats(session, orphan['id'])
-                        orphan_warning = " ⚠️ Large" if orphan_stats['snap_count'] > 30 else ""
+                        orphan_stats = get_snap_stats(session, orphan["id"])
+                        orphan_warning = (
+                            " ⚠️ Large" if orphan_stats["snap_count"] > 30 else ""
+                        )
                         typer.echo(
                             f"  {idx}. 📊 {orphan['name']} "
                             f"({orphan_stats['snap_count']} snaps{orphan_warning})"
                         )
                         menu_items.append({
-                            'type':     'orphan',
-                            'pipeline': orphan,
+                            "type": "orphan",
+                            "pipeline": orphan,
                         })
                         idx += 1
 
@@ -173,24 +210,25 @@ def show_graph(
 
                     if choice == str(idx) or choice.lower() == "all":
                         selected_ids = (
-                            [f['parent_id'] for f in families] +
-                            [c['id'] for f in families for c in f['children']] +
-                            [o['id'] for o in orphans]
+                            [f["parent_id"] for f in families]
+                            + [c["id"] for f in families for c in f["children"]]
+                            + [o["id"] for o in orphans]
                         )
                     else:
                         try:
                             chosen = menu_items[int(choice) - 1]
-                            if chosen['type'] == 'family':
+                            if chosen["type"] == "family":
                                 selected_ids = (
-                                    [chosen['parent']['parent_id']] +
-                                    [c['id'] for c in chosen['parent']['children']]
+                                    [chosen["parent"]["parent_id"]]
+                                    + [c["id"] for c in chosen["parent"]["children"]]
                                 )
                             else:
-                                selected_ids = [chosen['pipeline']['id']]
+                                selected_ids = [chosen["pipeline"]["id"]]
                         except (ValueError, IndexError):
                             selected_ids = [
-                                f['parent_id'] for f in families
-                                if choice.lower() in f['parent_name'].lower()
+                                f["parent_id"]
+                                for f in families
+                                if choice.lower() in f["parent_name"].lower()
                             ]
 
                 else:
@@ -199,13 +237,12 @@ def show_graph(
                         WHERE toLower(p.name) CONTAINS toLower($name)
                         RETURN p.id AS id
                     """, name=pipeline)
-                    selected_ids = [r['id'] for r in result]
+                    selected_ids = [r["id"] for r in result]
 
                 if not selected_ids:
                     typer.echo(f"{RED}❌ No pipeline found{RESET}")
                     raise typer.Exit(1)
 
-                # ── Fetch selected pipelines ───────────────
                 pipelines_result = session.run("""
                     MATCH (p:Pipeline)
                     WHERE p.id IN $ids
@@ -224,18 +261,16 @@ def show_graph(
 
                 typer.echo("")
 
-                # ── Build tree ────────────────────────────
                 root = Tree("🫧 [bold gold1]Goldilocks Pipeline Graph[/bold gold1]")
 
                 for p in pipelines:
-                    snap_str   = f"{p['snap_count']} snaps"
+                    snap_str = f"{p['snap_count']} snaps"
                     parent_str = f"{p['parents']} parent{'s' if p['parents'] != 1 else ''}"
-                    child_str  = f"{p['children']} child{'ren' if p['children'] != 1 else ''}"
+                    child_str = f"{p['children']} child{'ren' if p['children'] != 1 else ''}"
 
-                    # ── Size warning ──────────────────────
-                    if p['snap_count'] > 30:
+                    if p["snap_count"] > 30:
                         size_warning = " [yellow]⚠️  Large pipeline[/yellow]"
-                    elif p['snap_count'] > 15:
+                    elif p["snap_count"] > 15:
                         size_warning = " [yellow]⚡ Complex[/yellow]"
                     else:
                         size_warning = ""
@@ -245,9 +280,39 @@ def show_graph(
                         f"[dim]({snap_str} · {parent_str} · {child_str})[/dim]"
                         f"{size_warning}"
                     )
+
+                    upstream = get_upstream_names(session, p["id"])
+                    downstream = get_downstream_calls(session, p["id"])
+
+                    if upstream:
+                        pipe_tree.add(
+                            "[dim]↑ Called by: " + ", ".join(upstream) + "[/dim]"
+                        )
+
+                    if downstream:
+                        pipe_tree.add(
+                            "[dim]↓ Calls: "
+                            + ", ".join(
+                                f"{d['name']} ×{d['occurrences']}"
+                                if d["occurrences"] > 1
+                                else d["name"]
+                                for d in downstream
+                            )
+                            + "[/dim]"
+                        )
+
                     render_pipeline(session, p, pipe_tree)
 
-                console.print(root)
+                if reveal:
+                    with console.capture() as capture:
+                        console.print(root)
+
+                    for line in capture.get().splitlines():
+                        console.print(line)
+                        time.sleep(delay)
+                else:
+                    console.print(root)
+
                 console.print()
                 console.print()
                 typer.echo("")
