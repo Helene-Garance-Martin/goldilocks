@@ -133,24 +133,29 @@ def anonymise_pipeline(input_path: str, output_path: str) -> None:
         return
 
     print(f"🔍  Reading: {input_path}")
-    raw = input_file.read_text(encoding="utf-8")
+
+    try:
+        pipeline_json = json.loads(input_file.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        print("⚠️   Not valid JSON — falling back to text scrubbing.")
+        raw = input_file.read_text(encoding="utf-8")
+        raw = anonymise_org_names(raw)
+        raw = anonymise_urls(raw)
+        output_file.write_text(raw, encoding="utf-8")
+        return
 
     print("🏢  Anonymising organisation names...")
-    raw = anonymise_org_names(raw)
-
     print("🌐  Anonymising URLs and endpoints...")
-    raw = anonymise_urls(raw)
-
     print("🔑  Anonymising credentials and tokens...")
-    try:
-        pipeline_json = json.loads(raw)
-        pipeline_json = anonymise_credentials(pipeline_json)
-        clean = json.dumps(pipeline_json, indent=2)
-    except json.JSONDecodeError:
-        print("⚠️   Not valid JSON — text scrubbing only.")
-        clean = raw
+
+    pipeline_json = anonymise_credentials(pipeline_json)
+
+    clean = json.dumps(pipeline_json, indent=2)
+
+    clean = anonymise_org_names(clean)
 
     output_file.write_text(clean, encoding="utf-8")
+
     print(f"✅  Clean file written to: {output_path}")
     print(f"\n📊  Summary:")
     print(f"    Orgs replaced:   {len(org_lookup)}")
