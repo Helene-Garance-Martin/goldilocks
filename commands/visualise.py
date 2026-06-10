@@ -10,28 +10,29 @@ def visualise(
     output: str = typer.Option("diagrams/", help="Folder to save Mermaid diagram files"),
     direction: str = typer.Option("LR", help="Diagram direction: LR or TD"),
     fmt: str = typer.Option("mmd", help="Output format: mmd, png or svg"),
-    single: str = typer.Option(None, help="Name of single pipeline to visualise"),
+    pipeline: str = typer.Option(
+        None,
+        "--pipeline",
+        "-p",
+        "--single",
+        help="Name of single pipeline to visualise",
+    ),
 ):
     """
     🎨 Generate Mermaid diagrams from pipeline data.
-
-    Creates .mmd diagram files showing pipeline architecture —
-    snap nodes with icons, connections, subgraphs and colour coding.
-
-    Colours represent Snap type. Icons show what each snap does.
     """
     typer.echo(f"{CYAN}🎨 Generating Mermaid diagrams...{RESET}")
     typer.echo(f"   Input:     {input}")
     typer.echo(f"   Output:    {output}")
     typer.echo(f"   Direction: {direction}")
     typer.echo(f"   Format:    {fmt}")
-    if single:
-        typer.echo(f"   Single:    {single}")
+    if pipeline:
+        typer.echo(f"   Pipeline:  {pipeline}")
     typer.echo("")
 
     try:
         from visualiser import generate_diagrams
-        generate_diagrams(input, output, direction, fmt, single)
+        generate_diagrams(input, output, direction, fmt, pipeline)
         typer.echo(f"{GOLD}  💡 Open any .mmd file in VS Code to preview{RESET}\n")
 
     except Exception as e:
