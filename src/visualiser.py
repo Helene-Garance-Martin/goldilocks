@@ -106,15 +106,54 @@ def generate_diagrams(
         print(f"❌ Invalid JSON: {e}")
         return
 
-    pipelines       = data.get("entries", [data])
-    pipelines_typed = [parse_pipeline(p) for p in pipelines]
+    pipelines = data.get("entries", [data])
 
-    if single:
-        pipelines = [p for p in pipelines if single.lower() in p.get("name", "").lower()]
+    if not single:
+        print("\n📋 Available pipelines:\n")
+
+        for idx, pipeline in enumerate(pipelines, start=1):
+            name = pipeline.get("name", "Unknown")
+            snap_count = len(pipeline.get("snap_map", {}))
+            print(f"  {idx}. {name} ({snap_count} snaps)")
+
+        print(f"  {len(pipelines) + 1}. All pipelines")
+        print("")
+
+        choice = input("Which pipeline would you like to visualise? [all]: ").strip()
+
+        if choice and choice.lower() != "all" and choice != str(len(pipelines) + 1):
+            try:
+                selected = pipelines[int(choice) - 1]
+                pipelines = [selected]
+                single = selected.get("name", "Unknown")
+                print(f"\n🔍 Selected: {single}")
+
+            except (ValueError, IndexError):
+                pipelines = [
+                    p for p in pipelines
+                    if choice.lower() in p.get("name", "").lower()
+                ]
+
+                if not pipelines:
+                    print(f"❌ No pipeline found matching: {choice}")
+                    return
+
+                single = choice
+                print(f"\n🔍 Filtering to: {choice}")
+
+    if single and len(pipelines) != 1:
+        pipelines = [
+            p for p in pipelines
+            if single.lower() in p.get("name", "").lower()
+        ]
+
         if not pipelines:
             print(f"❌ No pipeline found matching: {single}")
             return
+
         print(f"🔍 Filtering to: {single}")
+
+    pipelines_typed = [parse_pipeline(p) for p in pipelines]
 
     count = len(pipelines)
     print(f"📦 Found {count} pipeline{'s' if count != 1 else ''}\n")
