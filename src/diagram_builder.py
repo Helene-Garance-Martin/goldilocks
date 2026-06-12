@@ -10,7 +10,7 @@ import re
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-from snap_resolver import resolve_snap_type, get_icon
+from snap_resolver import resolve_snap_type, get_icon, get_tag
 from mermaid_styles import NODE_SHAPES as SNAP_SHAPES, CLASSDEFS
 
 
@@ -32,7 +32,7 @@ safe_file_name = lambda name: re.sub(
 # ------------------------------------------------------------
 
 def format_label(label: str, snap_type: str) -> str:
-    tag = get_icon(snap_type)
+    tag = get_tag(snap_type)
     words = label.split()
     lines = []
     current = ""

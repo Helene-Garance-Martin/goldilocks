@@ -30,6 +30,28 @@ SNAP_ICONS = {
     "default":      "⚙️",
 }
 
+SNAP_TAGS = {
+    "httpclient":   "api",
+    "script":       "script",
+    "pipeexec":     "call",
+    "sftp_get":     "source",
+    "sftp_put":     "sink",
+    "mapper":       "map",
+    "filter":       "filter",
+    "trigger":      "trigger",
+    "dynamodb":     "store",
+    "router":       "branch",
+    "union":        "union",
+    "copy":         "copy",
+    "jsonsplitter": "split",
+    "groupbyfields":"group",
+    "recordreplay": "replay",
+    "sort":         "sort",
+    "unique":       "unique",
+    "datatransform":"transform",
+    "default":      "process",
+}
+
 # ------------------------------------------------------------
 # SHAPES — per snap type
 # ------------------------------------------------------------
@@ -92,3 +114,4 @@ resolve_snap_type = lambda class_id: (
 )
 
 get_icon = lambda snap_type: SNAP_ICONS.get(snap_type, SNAP_ICONS["default"])
+get_tag = lambda snap_type: SNAP_TAGS.get(snap_type, SNAP_TAGS["default"])
