@@ -56,25 +56,13 @@ def visualise(
 
     typer.echo(f"\n{CYAN}🫧 goldilocks · visualise{RESET}\n")
 
-    # --------------------------------------------------------
-    # Step 1 — resolve pipeline (menu fills the gap)
-    # --------------------------------------------------------
-
     if source == "traversal" and pipeline is None:
         pipeline = _pipeline_menu()
-
+        
     if source == "json" and pipeline is None:
-        pipeline = None  # JSON path handles its own selection via generate_diagrams
-
-    # --------------------------------------------------------
-    # Step 2 — ensure output directory
-    # --------------------------------------------------------
+        pipeline = None
 
     out.mkdir(parents=True, exist_ok=True)
-
-    # --------------------------------------------------------
-    # Step 3 — render
-    # --------------------------------------------------------
 
     try:
         if source == "traversal":
@@ -87,33 +75,25 @@ def visualise(
         typer.echo(f"{RED}❌ Failed to generate diagram: {e}{RESET}\n")
         raise typer.Exit(1)
 
-    # --------------------------------------------------------
-    # Step 4 — feedback
-    # --------------------------------------------------------
-
     typer.echo(f"\n{GREEN}🖼️  {final_path.resolve()}{RESET}")
 
-    # --------------------------------------------------------
-    # Step 5 — open (environment-aware)
-    # --------------------------------------------------------
-
     if open_after:
-        if os.environ.get("CODESPACES"):
-            typer.echo(
-                f"\n{GOLD}💡 remote environment detected — "
-                f"open the file in VS Code to preview{RESET}"
-            )
-        else:
-            webbrowser.open(final_path.resolve().as_uri())
+            if os.environ.get("CODESPACES"):
+                typer.echo(
+                    f"\n{GOLD}💡 remote environment — "
+                    f"open the file in VS Code to preview{RESET}"
+                )
+            elif fmt == "mmd":
+                typer.echo(
+                    f"\n{GOLD}💡 open the .mmd file in VS Code, "
+                    f"or use -f svg --open for browser{RESET}"
+                )
+            else:
+                webbrowser.open(final_path.resolve().as_uri())
     else:
         typer.echo(
-            f"{GOLD}💡 add --open to view immediately next time{RESET}"
+        f"{GOLD}💡 add --open to view immediately next time{RESET}"
         )
-
-
-# ================================================================
-# PRIVATE HELPERS
-# ================================================================
 
 def _pipeline_menu() -> str:
     """Interactive pipeline selector — only shown when no name given."""
@@ -125,3 +105,72 @@ def _pipeline_menu() -> str:
 
     with GraphDatabase.driver(uri, auth=(user, password)) as driver:
         with driver.session() as session:
+            result = session.run(
+                "MATCH (p:Pipeline) RETURN p.name AS name ORDER BY name"
+            )
+            pipelines = [r["name"] for r in result]
+
+    if not pipelines:
+        typer.echo(f"{RED}❌ No pipelines found in Neo4j{RESET}")
+        raise typer.Exit(1)
+
+    typer.echo("  Which pipeline?\n")
+    for i, name in enumerate(pipelines, 1):
+        typer.echo(f"    {i}. {name}")
+    typer.echo(f"    a. all pipelines")
+    typer.echo("")
+
+    choice = typer.prompt("  Select", default="1")
+
+    if choice.lower() == "a":
+        return "__all__"
+
+    try:
+        return pipelines[int(choice) - 1]
+    except (ValueError, IndexError):
+        typer.echo(f"{RED}❌ Invalid selection{RESET}")
+        raise typer.Exit(1)
+
+
+def _render_from_traversal(
+    pipeline: str,
+    out: Path,
+    direction: str,
+    fmt: str,
+) -> Path:
+    """Traverse Neo4j and render Mermaid diagram."""
+    from neo4j import GraphDatabase
+    from dag_builder import build_dag
+    from dag_mermaid_renderer import render_dag_mermaid
+    from renderer import render_diagram
+
+    uri = os.environ["NEO4J_URI"]
+    user = os.environ.get("NEO4J_USER", "neo4j")
+    password = os.environ["NEO4J_PASSWORD"]
+
+    with GraphDatabase.driver(uri, auth=(user, password)) as driver:
+        with driver.session() as session:
+            dag = build_dag(session, pipeline)
+            diagram = render_dag_mermaid(dag, direction)
+
+    file_name = pipeline.replace(" ", "_") + ".mmd"
+    mmd_path = out / file_name
+    mmd_path.write_text(diagram, encoding="utf-8")
+
+    render_diagram(mmd_path, fmt)
+
+    final = mmd_path.with_suffix(f".{fmt}") if fmt != "mmd" else mmd_path
+    return final
+
+
+def _render_from_json(
+    input: str,
+    output: str,
+    direction: str,
+    fmt: str,
+    pipeline: str | None,
+) -> None:
+    """Render from JSON export (existing path)."""
+    from visualiser import generate_diagrams
+    generate_diagrams(input, output, direction, fmt, pipeline)
+    typer.echo(f"{GOLD}💡 Open any .mmd file in VS Code to preview{RESET}\n")
