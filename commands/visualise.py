@@ -78,23 +78,9 @@ def visualise(
     typer.echo(f"\n{GREEN}🖼️  {final_path.resolve()}{RESET}")
 
     if open_after:
-
-        if final_path.suffix in [".svg", ".png"]:
-
-            if os.environ.get("CODESPACES"):
-                typer.echo(
-                    f"\n{GOLD}💡 remote environment — "
-                    f"open the rendered file from VS Code{RESET}"
-                )
-            else:
-                webbrowser.open(
-                    final_path.resolve().as_uri()
-                )
-
-        else:
-            typer.echo(
-                f"{GOLD}💡 --open currently supports svg/png outputs{RESET}"
-            )
+        _open_rendered_file(final_path)
+    else:
+        _print_output_hint(final_path)
 
 def _pipeline_menu() -> str:
     """Interactive pipeline selector, shown only when no name is given."""
@@ -178,6 +164,35 @@ def _render_from_traversal(
 
     final = render_diagram(mmd_path, fmt)
     return final
+
+def _open_rendered_file(path: Path) -> None:
+    """Open rendered diagram when supported."""
+
+    if path.suffix not in [".svg", ".png"]:
+        typer.echo(
+            f"{GOLD}💡 --open currently supports svg/png outputs{RESET}"
+        )
+        return
+
+    if os.environ.get("CODESPACES"):
+        typer.echo(
+            f"\n{GOLD}💡 remote environment — "
+            f"open the rendered file from VS Code{RESET}"
+        )
+        return
+
+    webbrowser.open(path.resolve().as_uri())
+
+def _print_output_hint(path: Path) -> None:
+    """Print a useful next-step hint based on actual output."""
+    if path.suffix == ".mmd":
+        typer.echo(
+            f"{GOLD}💡 Open the .mmd file in VS Code Mermaid Preview{RESET}"
+        )
+    else:
+        typer.echo(
+            f"{GOLD}💡 add --open to view immediately next time{RESET}"
+        )
 
 def _render_from_json(
     input: str,
