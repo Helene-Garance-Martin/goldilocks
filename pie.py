@@ -129,7 +129,7 @@ app.command()(seed)
 
 app.command()(ask)
 
-app.command()(run)
+# app.command()(run)
 
 app.command()(anonymise)
 
