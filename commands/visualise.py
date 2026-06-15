@@ -91,9 +91,14 @@ def visualise(
             else:
                 webbrowser.open(final_path.resolve().as_uri())
     else:
-        typer.echo(
-        f"{GOLD}💡 add --open to view immediately next time{RESET}"
-        )
+        if fmt == "mmd":
+            typer.echo(
+                f"{GOLD}💡 Open the .mmd file in VS Code Mermaid Preview{RESET}"
+            )
+        else:
+            typer.echo(
+            f"{GOLD}💡 add --open to view immediately next time{RESET}"
+            )
 
 
     
