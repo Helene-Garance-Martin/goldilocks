@@ -128,7 +128,7 @@ def show_graph(
 
                 if total == 0:
                     typer.echo(f"{GOLD}⚠️  Your graph is empty!{RESET}")
-                    typer.echo("💡 Run: python pie.py seed --uri your-uri")
+                    typer.echo("💡 Run: goldilocks seed --uri your-uri")
                     raise typer.Exit(0)
 
                 families_result = session.run("""

@@ -155,12 +155,12 @@ def ask_goldilocks(question: str) -> str:
                     return (
                         "⚠️  Your graph is empty!\n\n"
                         "💡 Run the full flow first:\n"
-                        "   python pie.py fetch\n"
-                        "   python pie.py sanitise\n"
-                        "   python pie.py anonymise\n"
-                        "   python pie.py seed\n\n"
+                        "   goldilocks fetch\n"
+                        "   goldilocks sanitise\n"
+                        "   goldilocks anonymise\n"
+                        "   goldilocks seed\n\n"
                         "Or run everything at once:\n"
-                        "   python pie.py run"
+                        "   goldilocks run"
                     )
 
                 # ── Generate Cypher ────────────────────────

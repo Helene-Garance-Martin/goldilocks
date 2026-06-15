@@ -186,11 +186,11 @@ if __name__ == "__main__":
 
 
 # ------------------------------------------------------------
-# Public function for pie.py ask command
+# Public function for goldilocks ask command
 # ------------------------------------------------------------
 
 def describe_from_neo4j() -> str:
-    """Called by pie.py ask command — returns full description."""
+    """Called by goldilocks ask command — returns full description."""
     uri      = os.environ["NEO4J_URI"]
     user     = os.environ.get("NEO4J_USER", "neo4j")
     password = os.environ["NEO4J_PASSWORD"]

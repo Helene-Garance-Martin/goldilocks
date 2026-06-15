@@ -84,11 +84,11 @@ def fetch():
         typer.echo(f"{GOLD}   JSON ready: {export_json}{RESET}")
         typer.echo("")
         typer.echo(f"{CYAN}Next steps:{RESET}")
-        typer.echo(f"  1. python pie.py sanitise --input {export_json} --output export_clean.json")
-        typer.echo(f"  2. python pie.py anonymise --input export_clean.json --output export_anonymised.json")
-        typer.echo(f"  3. python pie.py seed --uri your-neo4j-uri")
-        typer.echo(f"  4. python pie.py visualise --input export_anonymised.json")
-        typer.echo(f"\n  Or run everything: python pie.py run")
+        typer.echo(f"  1. goldilocks sanitise --input {export_json} --output export_clean.json")
+        typer.echo(f"  2. goldilocks anonymise --input export_clean.json --output export_anonymised.json")
+        typer.echo(f"  3. goldilocks seed --uri your-neo4j-uri")
+        typer.echo(f"  4. goldilocks visualise --input export_anonymised.json")
+        typer.echo(f"\n  Or run everything: goldilocks run")
 
     except Exception as e:
         typer.echo(f"{RED}❌ Fetch failed: {e}{RESET}")

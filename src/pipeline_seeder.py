@@ -271,7 +271,7 @@ def main():
     export_path = Path(os.getenv("GOLDILOCKS_EXPORT_PATH", "export_anonymised.json"))
     if not export_path.exists():
         print(f"❌ File not found: {export_path}")
-        print("   Run: python pie.py anonymise --input export.json first!")
+        print("   Run: goldilocks anonymise --input export.json first!")
         return
 
     print(f"📂 Loading: {export_path}")
