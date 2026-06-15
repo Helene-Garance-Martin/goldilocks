@@ -91,16 +91,14 @@ def visualise(
             else:
                 webbrowser.open(final_path.resolve().as_uri())
     else:
-        if fmt == "mmd":
+        if final.suffix == ".mmd":
             typer.echo(
                 f"{GOLD}💡 Open the .mmd file in VS Code Mermaid Preview{RESET}"
             )
         else:
             typer.echo(
-            f"{GOLD}💡 add --open to view immediately next time{RESET}"
+                f"{GOLD}💡 add --open to view immediately next time{RESET}"
             )
-
-
     
 def _pipeline_menu() -> str:
     """Interactive pipeline selector, shown only when no name is given."""
@@ -182,9 +180,7 @@ def _render_from_traversal(
     mmd_path = out / file_name
     mmd_path.write_text(diagram, encoding="utf-8")
 
-    render_diagram(mmd_path, fmt)
-
-    final = mmd_path.with_suffix(f".{fmt}") if fmt != "mmd" else mmd_path
+    final = render_diagram(mmd_path, fmt)
     return final
 
 def _render_from_json(

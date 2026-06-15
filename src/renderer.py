@@ -9,14 +9,15 @@ import subprocess
 from pathlib import Path
 
 
-def render_diagram(mmd_path: Path, fmt: str) -> None:
+def render_diagram(mmd_path: Path, fmt: str) -> Path:
     """Render .mmd to PNG or SVG via Mermaid CLI (mmdc)."""
     if fmt == "mmd":
-        return
+        return mmd_path
 
     if not shutil.which("mmdc"):
-        print("⚠️  mmdc not found — install with: npm install -g @mermaid-js/mermaid-cli")
-        return
+        print("⚠️  mmdc not found — falling back to .mmd")
+        print("   💡 Use .mmd preview in VS Code, or run locally for rendered output.")
+        return mmd_path
 
     out_path = mmd_path.with_suffix(f".{fmt}")
 
@@ -38,6 +39,8 @@ def render_diagram(mmd_path: Path, fmt: str) -> None:
 
     if result.returncode == 0:
         print(f"🖼️  Rendered: {out_path}")
-    else:
-        print("⚠️  PNG/SVG render unavailable in this environment.")
-        print("   💡 Use .mmd preview in VS Code, or run locally for rendered output.")
+        return out_path
+
+    print("⚠️  PNG/SVG render unavailable in this environment.")
+    print("   💡 Use .mmd preview in VS Code, or run locally for rendered output.")
+    return mmd_path
