@@ -95,8 +95,10 @@ def visualise(
         f"{GOLD}💡 add --open to view immediately next time{RESET}"
         )
 
+
+    
 def _pipeline_menu() -> str:
-    """Interactive pipeline selector — only shown when no name given."""
+    """Interactive pipeline selector, shown only when no name is given."""
     from neo4j import GraphDatabase
 
     uri = os.environ["NEO4J_URI"]
@@ -106,31 +108,49 @@ def _pipeline_menu() -> str:
     with GraphDatabase.driver(uri, auth=(user, password)) as driver:
         with driver.session() as session:
             result = session.run(
-                "MATCH (p:Pipeline) RETURN p.name AS name ORDER BY name"
+                """
+                MATCH (p:Pipeline)
+                OPTIONAL MATCH (p)-[:HAS_SNAP]->(s:Snap)
+                OPTIONAL MATCH (p)-[:CALLS]->(child:Pipeline)
+                RETURN
+                    p.name AS name,
+                    count(DISTINCT s) AS steps,
+                    count(DISTINCT child) AS children
+                ORDER BY name
+                """
             )
-            pipelines = [r["name"] for r in result]
+            pipelines = [dict(r) for r in result]
 
     if not pipelines:
         typer.echo(f"{RED}❌ No pipelines found in Neo4j{RESET}")
         raise typer.Exit(1)
 
     typer.echo("  Which pipeline?\n")
-    for i, name in enumerate(pipelines, 1):
-        typer.echo(f"    {i}. {name}")
-    typer.echo(f"    a. all pipelines")
+
+    for i, pipeline in enumerate(pipelines, 1):
+        suffix = f"{pipeline['steps']} steps"
+
+        child_count = pipeline["children"]
+
+        if child_count == 1:
+            suffix += " · 1 child"
+        elif child_count > 1:
+            suffix += f" · {child_count} children"
+
+        typer.echo(
+            f"    {i}. {pipeline['name']} "
+            f"({suffix})"
+        )
+
     typer.echo("")
 
     choice = typer.prompt("  Select", default="1")
 
-    if choice.lower() == "a":
-        return "__all__"
-
     try:
-        return pipelines[int(choice) - 1]
+        return pipelines[int(choice) - 1]["name"]
     except (ValueError, IndexError):
         typer.echo(f"{RED}❌ Invalid selection{RESET}")
         raise typer.Exit(1)
-
 
 def _render_from_traversal(
     pipeline: str,
@@ -161,7 +181,6 @@ def _render_from_traversal(
 
     final = mmd_path.with_suffix(f".{fmt}") if fmt != "mmd" else mmd_path
     return final
-
 
 def _render_from_json(
     input: str,
