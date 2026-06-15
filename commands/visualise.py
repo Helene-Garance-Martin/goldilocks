@@ -78,28 +78,24 @@ def visualise(
     typer.echo(f"\n{GREEN}🖼️  {final_path.resolve()}{RESET}")
 
     if open_after:
+
+        if final_path.suffix in [".svg", ".png"]:
+
             if os.environ.get("CODESPACES"):
                 typer.echo(
                     f"\n{GOLD}💡 remote environment — "
-                    f"open the file in VS Code to preview{RESET}"
-                )
-            elif fmt == "mmd":
-                typer.echo(
-                    f"\n{GOLD}💡 open the .mmd file in VS Code, "
-                    f"or use -f svg --open for browser{RESET}"
+                    f"open the rendered file from VS Code{RESET}"
                 )
             else:
-                webbrowser.open(final_path.resolve().as_uri())
-    else:
-        if final.suffix == ".mmd":
-            typer.echo(
-                f"{GOLD}💡 Open the .mmd file in VS Code Mermaid Preview{RESET}"
-            )
+                webbrowser.open(
+                    final_path.resolve().as_uri()
+                )
+
         else:
             typer.echo(
-                f"{GOLD}💡 add --open to view immediately next time{RESET}"
+                f"{GOLD}💡 --open currently supports svg/png outputs{RESET}"
             )
-    
+
 def _pipeline_menu() -> str:
     """Interactive pipeline selector, shown only when no name is given."""
     from neo4j import GraphDatabase
