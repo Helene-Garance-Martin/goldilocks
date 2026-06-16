@@ -53,9 +53,30 @@ Graph schema:
 {schema}
 
 Rules:
-- Only use MATCH and RETURN — no CREATE, DELETE, MERGE or SET
+- Only use MATCH, OPTIONAL MATCH, WITH and RETURN
+- Never use CREATE, DELETE, MERGE, SET, REMOVE, DROP, CALL or LOAD CSV
 - Always return meaningful field names
 - Keep queries simple and efficient
+- Generate valid Neo4j Cypher only
+- Never use markdown fences or code blocks around the query
+
+Cypher syntax examples:
+
+Correct:
+p.name CONTAINS 'AWS'
+
+Incorrect:
+CONTAINS(p.name, 'AWS')
+
+Correct:
+MATCH (p:Pipeline)
+WHERE p.name CONTAINS 'Dayforce'
+RETURN p.name AS pipeline_name
+
+Correct:
+MATCH (s:Snap)
+WHERE s.type = 'router'
+RETURN count(s) AS router_count
 
 Convert this question to Cypher:
 {question}
@@ -81,8 +102,17 @@ def explain_results(question: str, results: list) -> str:
 You explain technical pipeline data in plain, friendly English.
 Never use jargon without explaining it.
 Be concise but warm.
-IMPORTANT: Give a complete answer. Never ask follow-up questions.
-Never offer to dig deeper. The user will ask another question if needed.""",
+IMPORTANT:
+- Give a complete answer.
+- Never ask follow-up questions.
+- Never offer to dig deeper.
+- Never ask "Would you like me to..."
+- End with a concise conclusion.
+
+When making recommendations:
+- Separate graph evidence from interpretation.
+- Clearly label suggestions as recommendations, not facts.
+- Distinguish between observed topology and inferred architecture.""",
         messages=[{
             "role": "user",
             "content": f"""Question: {question}
@@ -180,7 +210,14 @@ def ask_goldilocks(question: str) -> str:
                 results = safe_query(session, cypher)
 
                 if not results:
-                    return "🤷 No data found for that question. Try seeding more pipelines first!"
+                    return (
+                        "🗺️ No matching graph evidence found.\n\n"
+                        "The graph is populated, but this question may be:\n"
+                        "• Architectural rather than graph-based\n"
+                        "• Outside the current topology model\n"
+                        "• Referring to systems not present in the graph\n\n"
+                        "Goldilocks can only reason from the topology it knows."
+                    )
 
                 # ── Explain in plain English ───────────────
                 return explain_results(question, results)
