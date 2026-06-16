@@ -28,6 +28,16 @@ client = anthropic.Anthropic()
 # CYPHER GENERATOR — temperature 0.1 (precise)
 # ------------------------------------------------------------
 
+def clean_cypher(text: str) -> str:
+    """Remove markdown fences and keep only the Cypher query."""
+    cleaned = text.strip()
+
+    if cleaned.startswith("```"):
+        cleaned = cleaned.replace("```cypher", "")
+        cleaned = cleaned.replace("```", "")
+
+    return cleaned.strip()
+
 def generate_cypher(question: str, schema: str) -> str:
     """Convert natural language question to Cypher query."""
     
@@ -53,7 +63,7 @@ Convert this question to Cypher:
 Return ONLY the Cypher query, nothing else."""
         }]
     )
-    return response.content[0].text.strip()
+    return clean_cypher(response.content[0].text)
 
 
 # ------------------------------------------------------------
