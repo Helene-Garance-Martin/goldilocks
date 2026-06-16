@@ -45,7 +45,7 @@ def audit():
 def _collect_findings(session) -> dict:
     """Collect graph-native audit findings from Neo4j."""
 
-    return {
+    findings = {
         "summary": _query_one(
             session,
             """
@@ -117,6 +117,12 @@ def _collect_findings(session) -> dict:
         ),
     }
 
+    for row in findings["pipeexec_snaps"]:
+        row["child_pipeline"] = _clean_child_pipeline(
+            row.get("child_pipeline")
+        )
+
+    return findings
 
 def _query_one(session, cypher: str) -> dict:
     """Run a Cypher query expected to return one row."""
@@ -190,6 +196,12 @@ def _print_findings(findings: dict) -> None:
         ["pipeline", "snap", "type"],
     )
 
+def _clean_child_pipeline(value: str | None) -> str:
+    """Return a readable child pipeline name from a stored PipeExec path."""
+    if not value:
+        return ""
+
+    return value.replace("\\", "/").split("/")[-1]
 
 def _print_simple_table(
     title: str,
