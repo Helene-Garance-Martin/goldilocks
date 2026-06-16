@@ -154,15 +154,13 @@ def ask_goldilocks(question: str) -> str:
                 if total == 0:
                     return (
                         "⚠️  Your graph is empty!\n\n"
-                        "💡 Run the full flow first:\n"
+                        "💡 Run the flow first:\n"
                         "   goldilocks fetch\n"
                         "   goldilocks sanitise\n"
                         "   goldilocks anonymise\n"
-                        "   goldilocks seed\n\n"
-                        "Or run everything at once:\n"
-                        "   goldilocks run"
+                        "   goldilocks seed"
                     )
-
+                
                 # ── Generate Cypher ────────────────────────
                 cypher = generate_cypher(question, GRAPH_SCHEMA)
                 print(f"\n🔍 Generated query: {cypher}\n")
