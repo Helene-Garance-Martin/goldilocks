@@ -1,191 +1,224 @@
 # commands/audit.py
 
-import json
+import os
 import typer
-
-from collections import defaultdict
-from pathlib import Path
 
 from rich.console import Console
 from rich.table import Table
-from rich.text import Text
 
-from commands.colours import CYAN, GREEN, RED, RESET
+from commands.colours import CYAN, GREEN, RED, YELLOW, RESET
 
 console = Console()
 
 
-def audit(
-    input: str = typer.Option(
-        "export_anonymised.json",
-        help="Path to anonymised pipeline JSON",
-    ),
-    output: str = typer.Option(
-        "goldilocks_audit",
-        help="Output filename (without extension)",
-    ),
-):
+def audit():
     """
-    🔐 Security audit — scan all pipelines for token risks.
-
-    Generates Rich terminal tables plus saves to JSON and Markdown.
+    🔐 Security and topology audit — inspect the Neo4j pipeline graph.
     """
 
-    typer.echo(f"{CYAN}🔐 Running Goldilocks Security Audit...{RESET}\n")
+    typer.echo(f"{CYAN}🔐 Running Goldilocks Graph Audit...{RESET}\n")
 
     try:
-        data = json.loads(Path(input).read_text(encoding="utf-8"))
-        pipelines = data.get("entries", [data])
+        from neo4j import GraphDatabase
 
-        from token_analyser import find_token_references
+        uri = os.environ["NEO4J_URI"]
+        user = os.environ.get("NEO4J_USER", "neo4j")
+        password = os.environ["NEO4J_PASSWORD"]
 
-        all_findings = [
-            {
-                "pipeline": pipeline.get("name", "Unknown"),
-                **finding,
-            }
-            for pipeline in pipelines
-            for finding in find_token_references(pipeline)
-        ]
+        with GraphDatabase.driver(uri, auth=(user, password)) as driver:
+            with driver.session() as session:
+                findings = _collect_findings(session)
+                _print_findings(findings)
 
-        grouped_findings = defaultdict(list)
+        typer.echo(f"\n{GREEN}✅ Audit complete.{RESET}\n")
 
-        for finding in all_findings:
-            grouped_findings[finding["pipeline"]].append(finding)
-
-        for pipeline_name, findings in grouped_findings.items():
-            pipeline_risks = [
-                finding
-                for finding in findings
-                if finding["wipes_context"]
-            ]
-
-            pipeline_safe = [
-                finding
-                for finding in findings
-                if not finding["wipes_context"]
-            ]
-
-            console.print(
-                f"\n📦 [bold cyan]{pipeline_name}[/bold cyan]"
-            )
-            console.print(f"   Findings: {len(findings)}")
-            console.print(f"   Risks:    {len(pipeline_risks)}")
-            console.print(f"   Safe:     {len(pipeline_safe)}\n")
-
-            table = Table(
-                show_header=True,
-                header_style="bold yellow",
-            )
-
-            table.add_column("Snap", style="white")
-            table.add_column("Type", style="blue")
-            table.add_column("Risk", style="bold red")
-            table.add_column("Tokens", style="yellow")
-            table.add_column("Value", style="dim")
-
-            for finding in findings:
-                risk_style = (
-                    "bold red"
-                    if finding["wipes_context"]
-                    else "green"
-                )
-
-                table.add_row(
-                    finding["snap_label"],
-                    finding["snap_type"],
-                    Text(
-                        finding["risk"],
-                        style=risk_style,
-                    ),
-                    ", ".join(finding["token_patterns"][:2]),
-                    finding["token_value"],
-                )
-
-            console.print(table)
-            console.print()
-
-        risks = [
-            finding
-            for finding in all_findings
-            if finding["wipes_context"]
-        ]
-
-        safe = [
-            finding
-            for finding in all_findings
-            if not finding["wipes_context"]
-        ]
-
-        summary = Table(
-            title="🔎 Audit Summary",
-            show_header=True,
-            header_style="bold yellow",
+    except KeyError:
+        typer.echo(
+            f"{YELLOW}⚠️  Neo4j env vars not set "
+            f"(NEO4J_URI, NEO4J_PASSWORD){RESET}\n"
         )
-
-        summary.add_column("Metric", style="cyan")
-        summary.add_column(
-            "Count",
-            style="green",
-            justify="right",
-            width=6,
-        )
-
-        summary.add_row("Pipelines", str(len(pipelines)))
-        summary.add_row("Findings", str(len(all_findings)))
-        summary.add_row("Risks", str(len(risks)))
-        summary.add_row("Safe findings", str(len(safe)))
-
-        console.print(summary)
-        console.print()
-        console.print()
-
-        json_path = Path(f"{output}.json")
-        json_path.write_text(
-            json.dumps(all_findings, indent=2),
-            encoding="utf-8",
-        )
-
-        typer.echo(f"💾 {GREEN}Saved: {json_path}{RESET}")
-
-        md_lines = ["# 🔐 Goldilocks Security Audit\n"]
-
-        for pipeline_name, findings in grouped_findings.items():
-            md_lines += [
-                f"## {pipeline_name}",
-                "",
-                "| Snap | Type | Risk | Tokens |",
-                "|------|------|------|--------|",
-            ]
-
-            md_lines += [
-                (
-                    f"| {finding['snap_label']} "
-                    f"| {finding['snap_type']} "
-                    f"| {finding['risk']} "
-                    f"| {', '.join(finding['token_patterns'][:2])} |"
-                )
-                for finding in findings
-            ]
-
-            md_lines.append("")
-
-        md_lines += [
-            "## Summary",
-            f"- Pipelines scanned: {len(pipelines)}",
-            f"- Total findings: {len(all_findings)}",
-            f"- Risks: {len(risks)}",
-            f"- Safe: {len(safe)}",
-        ]
-
-        md_path = Path(f"{output}.md")
-        md_path.write_text(
-            "\n".join(md_lines),
-            encoding="utf-8",
-        )
-
-        typer.echo(f"💾 {GREEN}Saved: {md_path}{RESET}\n")
 
     except Exception as e:
         typer.echo(f"{RED}❌ Audit failed: {e}{RESET}\n")
-        raise typer.Exit(1)
+
+
+def _collect_findings(session) -> dict:
+    """Collect graph-native audit findings from Neo4j."""
+
+    return {
+        "summary": _query_one(
+            session,
+            """
+            MATCH (p:Pipeline)
+            OPTIONAL MATCH (p)-[:HAS_SNAP]->(s:Snap)
+            RETURN
+                count(DISTINCT p) AS pipelines,
+                count(DISTINCT s) AS snaps
+            """
+        ),
+        "large_pipelines": _query_all(
+            session,
+            """
+            MATCH (p:Pipeline)-[:HAS_SNAP]->(s:Snap)
+            WITH p, count(s) AS snap_count
+            WHERE snap_count >= 25
+            RETURN p.name AS pipeline, snap_count
+            ORDER BY snap_count DESC
+            """
+        ),
+        "http_snaps": _query_all(
+            session,
+            """
+            MATCH (p:Pipeline)-[:HAS_SNAP]->(s:Snap)
+            WHERE s.type = "httpclient"
+            RETURN p.name AS pipeline, s.label AS snap
+            ORDER BY pipeline, snap
+            """
+        ),
+        "script_snaps": _query_all(
+            session,
+            """
+            MATCH (p:Pipeline)-[:HAS_SNAP]->(s:Snap)
+            WHERE s.type = "script"
+            RETURN p.name AS pipeline, s.label AS snap
+            ORDER BY pipeline, snap
+            """
+        ),
+        "pipeexec_snaps": _query_all(
+            session,
+            """
+            MATCH (p:Pipeline)-[:HAS_SNAP]->(s:Snap)
+            WHERE s.type = "pipeexec"
+            RETURN
+                p.name AS pipeline,
+                s.label AS snap,
+                s.child_pipeline AS child_pipeline
+            ORDER BY pipeline, snap
+            """
+        ),
+        "router_pipelines": _query_all(
+            session,
+            """
+            MATCH (p:Pipeline)-[:HAS_SNAP]->(s:Snap)
+            WHERE s.type = "router"
+            WITH p, count(s) AS router_count
+            RETURN p.name AS pipeline, router_count
+            ORDER BY router_count DESC, pipeline
+            """
+        ),
+        "context_wiping_snaps": _query_all(
+            session,
+            """
+            MATCH (p:Pipeline)-[:HAS_SNAP]->(s:Snap)
+            WHERE s.wipes_context = true
+            RETURN p.name AS pipeline, s.label AS snap, s.type AS type
+            ORDER BY pipeline, snap
+            """
+        ),
+    }
+
+
+def _query_one(session, cypher: str) -> dict:
+    """Run a Cypher query expected to return one row."""
+    result = session.run(cypher)
+    row = result.single()
+    return dict(row) if row else {}
+
+
+def _query_all(session, cypher: str) -> list[dict]:
+    """Run a Cypher query and return all rows as dictionaries."""
+    return [dict(row) for row in session.run(cypher)]
+
+
+def _print_findings(findings: dict) -> None:
+    """Render audit findings as Rich tables."""
+
+    summary = findings["summary"]
+
+    summary_table = Table(
+        title="🔎 Graph Audit Summary",
+        show_header=True,
+        header_style="bold yellow",
+    )
+    summary_table.add_column("Metric", style="cyan")
+    summary_table.add_column("Count", style="green", justify="right")
+
+    summary_table.add_row("Pipelines", str(summary.get("pipelines", 0)))
+    summary_table.add_row("Snaps", str(summary.get("snaps", 0)))
+    summary_table.add_row("Large pipelines", str(len(findings["large_pipelines"])))
+    summary_table.add_row("HTTP snaps", str(len(findings["http_snaps"])))
+    summary_table.add_row("Script snaps", str(len(findings["script_snaps"])))
+    summary_table.add_row("PipeExec snaps", str(len(findings["pipeexec_snaps"])))
+    summary_table.add_row("Router pipelines", str(len(findings["router_pipelines"])))
+    summary_table.add_row("Context-wiping snaps", str(len(findings["context_wiping_snaps"])))
+
+    console.print(summary_table)
+
+    _print_simple_table(
+        "⚠️ Large pipelines",
+        findings["large_pipelines"],
+        ["pipeline", "snap_count"],
+    )
+
+    _print_simple_table(
+        "🌐 HTTP snaps",
+        findings["http_snaps"],
+        ["pipeline", "snap"],
+    )
+
+    _print_simple_table(
+        "📜 Script snaps",
+        findings["script_snaps"],
+        ["pipeline", "snap"],
+    )
+
+    _print_simple_table(
+        "🔀 PipeExec calls",
+        findings["pipeexec_snaps"],
+        ["pipeline", "snap", "child_pipeline"],
+    )
+
+    _print_simple_table(
+        "🧭 Router pipelines",
+        findings["router_pipelines"],
+        ["pipeline", "router_count"],
+    )
+
+    _print_simple_table(
+        "🔥 Context-wiping snaps",
+        findings["context_wiping_snaps"],
+        ["pipeline", "snap", "type"],
+    )
+
+
+def _print_simple_table(
+    title: str,
+    rows: list[dict],
+    columns: list[str],
+) -> None:
+    """Print a table if rows exist, otherwise print a quiet empty state."""
+
+    console.print()
+
+    if not rows:
+        console.print(f"[green]✅ {title}: none found[/green]")
+        return
+
+    table = Table(
+        title=title,
+        show_header=True,
+        header_style="bold yellow",
+    )
+
+    for column in columns:
+        table.add_column(column.replace("_", " ").title())
+
+    for row in rows:
+        table.add_row(
+            *[
+                str(row.get(column, "") or "")
+                for column in columns
+            ]
+        )
+
+    console.print(table)
