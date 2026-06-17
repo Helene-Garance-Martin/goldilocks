@@ -8,6 +8,20 @@ from dag_models import DAGModel
 from snap_resolver import get_icon
 from mermaid_styles import NODE_SHAPES, CLASSDEFS
 
+MERMAID_INIT = """%%{init: {
+  'flowchart': {
+    'useMaxWidth': false,
+    'htmlLabels': false,
+    'nodeSpacing': 30,
+    'rankSpacing': 45,
+    'curve': 'basis',
+    'padding': 8
+  },
+  'themeVariables': {
+    'fontSize': '14px'
+  }
+}}%%"""
+
 
 def safe_mermaid_id(node_id: str) -> str:
     """
@@ -34,6 +48,7 @@ def render_dag_mermaid(dag: DAGModel, direction: str = "LR") -> str:
     lines.append("---")
     lines.append(f"title: {dag.pipeline_name}")
     lines.append("---")
+    lines.append(MERMAID_INIT)
     lines.append(f"flowchart {direction}")
     lines.append("")
 
