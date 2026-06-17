@@ -31,15 +31,10 @@ def render_dag_mermaid(dag: DAGModel, direction: str = "LR") -> str:
 
     lines = []
 
+    lines.append("---")
+    lines.append(f"title: {dag.pipeline_name}")
+    lines.append("---")
     lines.append(f"flowchart {direction}")
-    lines.append("")
-
-    lines.append("    %% Title")
-    lines.append(
-        f'    pipeline_title["<b>{dag.pipeline_name}</b>"]:::diagram_title'
-    )
-    lines.append('    title_spacer[" "]:::title_spacer')
-    lines.append("    pipeline_title --> title_spacer")
     lines.append("")
 
     # Nodes
@@ -70,14 +65,6 @@ def render_dag_mermaid(dag: DAGModel, direction: str = "LR") -> str:
 
     # Styles
     lines.append("    %% Styles")
-    lines.append(
-        "    classDef diagram_title fill:none,stroke:none,font-size:30px,font-weight:bold;"
-    )
-    lines.append(
-        "    classDef title_spacer fill:none,stroke:none,color:transparent;"
-    )
     lines.append(CLASSDEFS)
-
-    return "\n".join(lines)
 
     return "\n".join(lines)
