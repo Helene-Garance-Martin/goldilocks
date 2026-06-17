@@ -3,6 +3,7 @@ import os
 import webbrowser
 from pathlib import Path
 
+import pyperclip
 import typer
 from commands.colours import CYAN, GREEN, RED, GOLD, RESET
 
@@ -34,9 +35,15 @@ def visualise(
     ),
 
     confluence: bool = typer.Option(
-    False,
-    "--confluence",
-    help="Prepare Mermaid output for pasting into a Confluence Mermaid macro",
+        False,
+        "--confluence",
+        help="Prepare Mermaid output for pasting into a Confluence Mermaid macro",
+    ),
+
+    clipboard: bool = typer.Option(
+        False,
+        "--clipboard",
+        help="Copy Mermaid output to clipboard",
     ),
 
     source: str = typer.Option(
@@ -85,13 +92,19 @@ def visualise(
     typer.echo(f"\n{GREEN}🖼️  {final_path.resolve()}{RESET}")
 
     if confluence:
-        _print_confluence_hint(final_path)
+        copied = False
+
+        if clipboard:
+            copied = _copy_mermaid_to_clipboard(final_path)
+
+        _print_confluence_hint(final_path, copied=copied)
         return
 
     if open_after:
         _open_rendered_file(final_path)
     else:
         _print_output_hint(final_path)
+
 
 def _pipeline_menu() -> str:
     """Interactive pipeline selector, shown only when no name is given."""
@@ -213,7 +226,7 @@ def _open_rendered_file(path: Path) -> None:
     webbrowser.open(path.resolve().as_uri())
 
 
-def _print_confluence_hint(path: Path) -> None:
+def _print_confluence_hint(path: Path, copied: bool = False) -> None:
     """Print Confluence paste instructions for Mermaid output."""
 
     if path.suffix != ".mmd":
@@ -225,19 +238,29 @@ def _print_confluence_hint(path: Path) -> None:
     typer.echo(
         f"\n{GREEN}✅ Ready to paste into Confluence Mermaid macro.{RESET}"
     )
-    typer.echo(
-        f"{GOLD}💡 Open this file and copy the Mermaid code:{RESET}"
-    )
-    typer.echo(f"   {path.resolve()}")
 
-def _render_from_json(
-    input: str,
-    output: str,
-    direction: str,
-    fmt: str,
-    pipeline: str | None,
-) -> None:
-    """Render from JSON export (existing path)."""
-    from visualiser import generate_diagrams
-    generate_diagrams(input, output, direction, fmt, pipeline)
-    typer.echo(f"{GOLD}💡 Open any .mmd file in VS Code to preview{RESET}\n")
+    if copied:
+        typer.echo(f"{GREEN}📋 Mermaid code copied to clipboard.{RESET}")
+    else:
+        typer.echo(
+            f"{GOLD}💡 Open this file and copy the Mermaid code:{RESET}"
+        )
+        typer.echo(f"   {path.resolve()}")
+
+def _copy_mermaid_to_clipboard(path: Path) -> bool:
+    """Copy Mermaid file contents to clipboard."""
+
+    if path.suffix != ".mmd":
+        return False
+
+    try:
+        text = path.read_text(encoding="utf-8")
+        pyperclip.copy(text)
+        return True
+
+    except Exception as e:
+        typer.echo(
+            f"{GOLD}💡 Could not copy to clipboard: {e}{RESET}"
+        )
+        return False
+    
