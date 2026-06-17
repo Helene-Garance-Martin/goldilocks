@@ -32,6 +32,13 @@ def visualise(
         "--open",
         help="Open diagram after rendering",
     ),
+
+    confluence: bool = typer.Option(
+    False,
+    "--confluence",
+    help="Prepare Mermaid output for pasting into a Confluence Mermaid macro",
+    ),
+
     source: str = typer.Option(
         "traversal",
         "--source", "-s",
@@ -76,6 +83,10 @@ def visualise(
         raise typer.Exit(1)
 
     typer.echo(f"\n{GREEN}🖼️  {final_path.resolve()}{RESET}")
+
+    if confluence:
+        _print_confluence_hint(final_path)
+        return
 
     if open_after:
         _open_rendered_file(final_path)
@@ -183,16 +194,41 @@ def _open_rendered_file(path: Path) -> None:
 
     webbrowser.open(path.resolve().as_uri())
 
-def _print_output_hint(path: Path) -> None:
-    """Print a useful next-step hint based on actual output."""
-    if path.suffix == ".mmd":
+def _open_rendered_file(path: Path) -> None:
+    """Open rendered diagram when supported."""
+
+    if path.suffix not in [".svg", ".png"]:
         typer.echo(
-            f"{GOLD}💡 Open the .mmd file in VS Code Mermaid Preview{RESET}"
+            f"{GOLD}💡 --open currently supports svg/png outputs{RESET}"
         )
-    else:
+        return
+
+    if os.environ.get("CODESPACES"):
         typer.echo(
-            f"{GOLD}💡 add --open to view immediately next time{RESET}"
+            f"\n{GOLD}💡 remote environment — "
+            f"open the rendered file from VS Code{RESET}"
         )
+        return
+
+    webbrowser.open(path.resolve().as_uri())
+
+
+def _print_confluence_hint(path: Path) -> None:
+    """Print Confluence paste instructions for Mermaid output."""
+
+    if path.suffix != ".mmd":
+        typer.echo(
+            f"{GOLD}💡 Confluence Mermaid works best with .mmd output{RESET}"
+        )
+        return
+
+    typer.echo(
+        f"\n{GREEN}✅ Ready to paste into Confluence Mermaid macro.{RESET}"
+    )
+    typer.echo(
+        f"{GOLD}💡 Open this file and copy the Mermaid code:{RESET}"
+    )
+    typer.echo(f"   {path.resolve()}")
 
 def _render_from_json(
     input: str,
