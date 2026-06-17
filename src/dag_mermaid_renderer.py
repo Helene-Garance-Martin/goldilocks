@@ -2,25 +2,35 @@
 # ------------------------------------------------------------
 # GOLDILOCKS — DAG Mermaid Renderer
 # Renders a DAGModel into Mermaid syntax.
+#
+# Emits a single YAML front matter block combining title + Mermaid
+# config — the modern (v10+) pattern that replaces the older
+# `%%{init: ...}%%` directive. All sizing, spacing and label policy
+# lives here, so the source travels cleanly between Confluence
+# (ContentCraft macro), GitHub, GitLab, Notion, Obsidian and
+# mermaid.live without per-host tweaks.
 # ------------------------------------------------------------
 
 from dag_models import DAGModel
 from snap_resolver import get_icon
 from mermaid_styles import NODE_SHAPES, CLASSDEFS
 
-MERMAID_INIT = """%%{init: {
-  'flowchart': {
-    'useMaxWidth': false,
-    'htmlLabels': false,
-    'nodeSpacing': 30,
-    'rankSpacing': 45,
-    'curve': 'basis',
-    'padding': 8
-  },
-  'themeVariables': {
-    'fontSize': '14px'
-  }
-}}%%"""
+
+# Single front matter: title + config in one YAML block.
+# {title} is filled in by str.format at render time.
+MERMAID_FRONTMATTER = """---
+title: "{title}"
+config:
+  flowchart:
+    useMaxWidth: false
+    htmlLabels: false
+    nodeSpacing: 30
+    rankSpacing: 45
+    curve: basis
+    padding: 8
+  themeVariables:
+    fontSize: '14px'
+---"""
 
 
 def safe_mermaid_id(node_id: str) -> str:
@@ -38,6 +48,15 @@ def format_mermaid_label(label: str, snap_type: str) -> str:
     return f"{icon}<br/>{label}"
 
 
+def _yaml_safe_title(title: str) -> str:
+    """
+    Escape characters that would break a YAML double-quoted scalar.
+    Keeps pipeline names with colons, quotes or backslashes safe in
+    the front matter.
+    """
+    return title.replace("\\", "\\\\").replace('"', '\\"')
+
+
 def render_dag_mermaid(dag: DAGModel, direction: str = "LR") -> str:
     """
     Render a DAGModel as Mermaid flowchart syntax.
@@ -45,10 +64,9 @@ def render_dag_mermaid(dag: DAGModel, direction: str = "LR") -> str:
 
     lines = []
 
-    lines.append("---")
-    lines.append(f"title: {dag.pipeline_name}")
-    lines.append("---")
-    lines.append(MERMAID_INIT)
+    # Front matter: title + config in a single YAML block.
+    safe_title = _yaml_safe_title(dag.pipeline_name)
+    lines.append(MERMAID_FRONTMATTER.format(title=safe_title))
     lines.append(f"flowchart {direction}")
     lines.append("")
 
