@@ -28,6 +28,23 @@ client = anthropic.Anthropic()
 # CYPHER GENERATOR — temperature 0.1 (precise)
 # ------------------------------------------------------------
 
+def clean_answer(text: str) -> str:
+    """Remove known hallucinated tails from model explanations."""
+    cleaned = text.strip()
+
+    stop_markers = [
+        "µEnd File",
+        "# EdwardDali",
+        '{"my_key"',
+        '{"my key"',
+    ]
+
+    for marker in stop_markers:
+        if marker in cleaned:
+            cleaned = cleaned.split(marker)[0].strip()
+
+    return cleaned
+
 def clean_cypher(text: str) -> str:
     """Remove markdown fences and keep only the Cypher query."""
     cleaned = text.strip()
@@ -59,6 +76,7 @@ Rules:
 - Keep queries simple and efficient
 - Generate valid Neo4j Cypher only
 - Never use markdown fences or code blocks around the query
+- Do not append JSON, file markers, repository names, test strings, or unrelated metadata.
 
 Cypher syntax examples:
 
@@ -84,7 +102,7 @@ Convert this question to Cypher:
 Return ONLY the Cypher query, nothing else."""
         }]
     )
-    return clean_cypher(response.content[0].text)
+    return clean_answer(response.content[0].text)
 
 
 # ------------------------------------------------------------
@@ -96,12 +114,13 @@ def explain_results(question: str, results: list) -> str:
 
     response = client.messages.create(
         model="claude-opus-4-5",
-        max_tokens=500,
+        max_tokens=800,
         temperature=0.5,
-        system="""You are Goldilocks — a pipeline intelligence assistant for arts organisations.
+        system=f"""You are Goldilocks — a pipeline intelligence assistant for arts organisations.
 You explain technical pipeline data in plain, friendly English.
 Never use jargon without explaining it.
 Be concise but warm.
+
 IMPORTANT:
 - Give a complete answer.
 - Never ask follow-up questions.
@@ -112,7 +131,8 @@ IMPORTANT:
 When making recommendations:
 - Separate graph evidence from interpretation.
 - Clearly label suggestions as recommendations, not facts.
-- Distinguish between observed topology and inferred architecture.""",
+- Distinguish between observed topology and inferred architecture.
+""",
         messages=[{
             "role": "user",
             "content": f"""Question: {question}
@@ -123,6 +143,7 @@ Data from the graph:
 Answer the question based on this data."""
         }]
     )
+
     return response.content[0].text.strip()
 
 # ------------------------------------------------------------
@@ -145,6 +166,7 @@ Important notes:
 - Pipeline names may use > as separator e.g. 'DayforceReports>Sharepoint'
 - Always use CONTAINS for pipeline name matching, never exact match
 - wipes_context = true means the snap clears document context
+
 """
 
 # ------------------------------------------------------------
