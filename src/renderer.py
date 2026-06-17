@@ -14,7 +14,9 @@ def render_diagram(mmd_path: Path, fmt: str) -> Path:
     if fmt == "mmd":
         return mmd_path
 
-    if not shutil.which("mmdc"):
+    mmdc = shutil.which("mmdc.cmd") or shutil.which("mmdc")
+
+    if not mmdc:
         print("⚠️  mmdc not found — falling back to .mmd")
         print("   💡 Use .mmd preview in VS Code, or run locally for rendered output.")
         return mmd_path
@@ -23,7 +25,7 @@ def render_diagram(mmd_path: Path, fmt: str) -> Path:
 
     result = subprocess.run(
         [
-            "mmdc",
+            mmdc,
             "-i",
             str(mmd_path),
             "-o",
