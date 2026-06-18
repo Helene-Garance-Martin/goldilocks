@@ -96,6 +96,23 @@ def render_dag_mermaid(dag: DAGModel, direction: str = "LR") -> str:
 
     lines.append("")
 
+    # External references / child pipeline calls
+    pipeexec_nodes = [
+        node for node in dag.nodes
+        if node.type == "pipeexec"
+    ]
+
+    for index, ref in enumerate(dag.external_references, 1):
+        ref_id = f"external_ref_{index}"
+        clean_ref = ref.replace("\\", "/").split("/")[-1]
+        lines.append(f'    {ref_id}["📦 {clean_ref}"]:::pipeexec')
+
+        for node in pipeexec_nodes:
+            source = safe_mermaid_id(node.id)
+            lines.append(f"    {source} -.->|CALLS| {ref_id}")
+    
+    lines.append("")
+
     # Styles
     lines.append("    %% Styles")
     lines.append(CLASSDEFS)

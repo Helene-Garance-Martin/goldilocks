@@ -247,6 +247,10 @@ def _print_confluence_hint(path: Path, copied: bool = False) -> None:
         )
         typer.echo(f"   {path.resolve()}")
 
+def _print_output_hint(path):
+    """Print where the rendered diagram was saved."""
+    typer.echo(f"{GREEN}✅ Diagram written to: {path}{RESET}")
+
 def _copy_mermaid_to_clipboard(path: Path) -> bool:
     """Copy Mermaid file contents to clipboard."""
 

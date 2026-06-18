@@ -186,10 +186,12 @@ def build_pipeline_diagram(
         snap_map = pipeline.get("snap_map", {})
         p_safe_id = pipeline_node_ids.get(pipeline_name, "")
 
-        for snap in snap_map.values():
+        for snap_id, snap in snap_map.items():
             snap_type = resolve_snap_type(snap.get("class_id", ""))
 
             if snap_type == "pipeexec":
+                pipeexec_safe_id = safe_id(snap_id)
+                
                 try:
                     child_name = (
                         snap["property_map"]
@@ -206,7 +208,7 @@ def build_pipeline_diagram(
 
                             if child_safe_id and child_safe_id != p_safe_id:
                                 lines.append(
-                                    f"    {p_safe_id} -.->|CALLS| {child_safe_id}"
+                                    f"    {pipeexec_safe_id} -.->|CALLS| {child_safe_id}"
                                 )
 
                 except (KeyError, TypeError):
