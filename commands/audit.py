@@ -115,6 +115,17 @@ def _collect_findings(session) -> dict:
             ORDER BY pipeline, snap
             """
         ),
+        "emails": _query_all(
+            session,
+            """
+            MATCH (n)
+            UNWIND keys(n) AS property
+            WITH labels(n) AS labels, property, toString(n[property]) AS value
+            WHERE value CONTAINS "@"
+            RETURN labels, property, value
+            LIMIT 50
+            """
+        ),
     }
 
     for row in findings["pipeexec_snaps"]:
@@ -194,6 +205,12 @@ def _print_findings(findings: dict) -> None:
         "🔥 Context-wiping snaps",
         findings["context_wiping_snaps"],
         ["pipeline", "snap", "type"],
+    )
+
+    _print_simple_table(
+        "📧 Possible emails",
+        findings["emails"],
+        ["labels", "property", "value"],
     )
 
 def _clean_child_pipeline(value: str | None) -> str:
