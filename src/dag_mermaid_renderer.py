@@ -11,13 +11,13 @@
 # mermaid.live without per-host tweaks.
 # ------------------------------------------------------------
 
+
 from dag_models import DAGModel
 from snap_resolver import get_icon
 from mermaid_styles import NODE_SHAPES, CLASSDEFS
 
 
-# Single front matter: title + config in one YAML block.
-# {title} is filled in by str.format at render time.
+
 MERMAID_FRONTMATTER = """---
 title: "{title}"
 config:
@@ -51,10 +51,16 @@ def format_mermaid_label(label: str, snap_type: str) -> str:
 def _yaml_safe_title(title: str) -> str:
     """
     Escape characters that would break a YAML double-quoted scalar.
-    Keeps pipeline names with colons, quotes or backslashes safe in
-    the front matter.
-    """
+   
+     """
     return title.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _clean_child_pipeline_ref(ref: str) -> str:
+    """
+    Convert a child pipeline path into a readable display name.
+    """
+    return ref.replace("\\", "/").split("/")[-1]
 
 
 def render_dag_mermaid(dag: DAGModel, direction: str = "LR") -> str:
@@ -64,7 +70,7 @@ def render_dag_mermaid(dag: DAGModel, direction: str = "LR") -> str:
 
     lines = []
 
-    # Front matter: title + config in a single YAML block.
+
     safe_title = _yaml_safe_title(dag.pipeline_name)
     lines.append(MERMAID_FRONTMATTER.format(title=safe_title))
     lines.append(f"flowchart {direction}")
@@ -78,7 +84,7 @@ def render_dag_mermaid(dag: DAGModel, direction: str = "LR") -> str:
 
         shape = NODE_SHAPES.get(
             node.type,
-            NODE_SHAPES["default"]
+            NODE_SHAPES["default"],
         )
 
         node_str = shape.replace("{label}", label)
@@ -87,8 +93,8 @@ def render_dag_mermaid(dag: DAGModel, direction: str = "LR") -> str:
 
     lines.append("")
 
-    # Edges
-    lines.append("    %% Edges")
+    # Execution edges
+    lines.append("    %% Execution edges")
     for edge in dag.edges:
         source = safe_mermaid_id(edge.source)
         target = safe_mermaid_id(edge.target)
@@ -96,21 +102,26 @@ def render_dag_mermaid(dag: DAGModel, direction: str = "LR") -> str:
 
     lines.append("")
 
-    # External references / child pipeline calls
-    pipeexec_nodes = [
-        node for node in dag.nodes
-        if node.type == "pipeexec"
-    ]
+    # Child pipeline calls
+    lines.append("    %% Child pipeline calls")
+    external_index = 1
 
-    for index, ref in enumerate(dag.external_references, 1):
-        ref_id = f"external_ref_{index}"
-        clean_ref = ref.replace("\\", "/").split("/")[-1]
+    for node in dag.nodes:
+        if node.type != "pipeexec":
+            continue
+
+        if not node.child_pipeline:
+            continue
+
+        clean_ref = _clean_child_pipeline_ref(node.child_pipeline)
+        ref_id = f"external_ref_{external_index}"
+        external_index += 1
+
         lines.append(f'    {ref_id}["📦 {clean_ref}"]:::pipeexec')
 
-        for node in pipeexec_nodes:
-            source = safe_mermaid_id(node.id)
-            lines.append(f"    {source} -.->|CALLS| {ref_id}")
-    
+        source = safe_mermaid_id(node.id)
+        lines.append(f"    {source} -.->|CALLS| {ref_id}")
+
     lines.append("")
 
     # Styles

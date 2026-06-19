@@ -50,6 +50,7 @@ def build_dag(session, pipeline_name: str) -> DAGModel:
             type=row["type"],
             wipes_context=row["wipes_context"],
             next_ids=next_ids,
+            child_pipeline=row["child_pipeline"],
         )
 
         nodes.append(node)

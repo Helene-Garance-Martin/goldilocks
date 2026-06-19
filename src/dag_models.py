@@ -8,6 +8,7 @@ class DAGNode(BaseModel):
     type: str
     wipes_context: bool = False
     next_ids: list[str] = Field(default_factory=list)
+    child_pipeline: str | None = None
 
 
 class DAGEdge(BaseModel):
