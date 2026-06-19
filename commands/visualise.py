@@ -105,7 +105,6 @@ def visualise(
     else:
         _print_output_hint(final_path)
 
-
 def _pipeline_menu() -> str:
     """Interactive pipeline selector, shown only when no name is given."""
     from neo4j import GraphDatabase
@@ -121,10 +120,12 @@ def _pipeline_menu() -> str:
                 MATCH (p:Pipeline)
                 OPTIONAL MATCH (p)-[:HAS_SNAP]->(s:Snap)
                 OPTIONAL MATCH (p)-[:CALLS]->(child:Pipeline)
+                OPTIONAL MATCH (parent:Pipeline)-[:CALLS]->(p)
                 RETURN
                     p.name AS name,
-                    count(DISTINCT s) AS steps,
-                    count(DISTINCT child) AS children
+                    count(DISTINCT s) AS snap_count,
+                    count(DISTINCT child) AS children,
+                    count(DISTINCT parent) AS parents
                 ORDER BY name
                 """
             )
@@ -137,14 +138,11 @@ def _pipeline_menu() -> str:
     typer.echo("  Which pipeline?\n")
 
     for i, pipeline in enumerate(pipelines, 1):
-        suffix = f"{pipeline['steps']} steps"
+        snap_str = f"{pipeline['snap_count']} snaps"
+        parent_str = f"{pipeline['parents']} parent{'s' if pipeline['parents'] != 1 else ''}"
+        child_str = f"{pipeline['children']} child{'ren' if pipeline['children'] != 1 else ''}"
 
-        child_count = pipeline["children"]
-
-        if child_count == 1:
-            suffix += " · 1 child"
-        elif child_count > 1:
-            suffix += f" · {child_count} children"
+        suffix = f"{snap_str} · {parent_str} · {child_str}"
 
         typer.echo(
             f"    {i}. {pipeline['name']} "
@@ -160,6 +158,7 @@ def _pipeline_menu() -> str:
     except (ValueError, IndexError):
         typer.echo(f"{RED}❌ Invalid selection{RESET}")
         raise typer.Exit(1)
+
 
 def _render_from_traversal(
     pipeline: str,
