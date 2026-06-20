@@ -290,9 +290,9 @@ def _print_pipeexec_table(rows: list[dict]) -> None:
         status = row.get("status", "")
 
         if status == "resolved":
-            status_text = "[green]● resolved[/green]"
+            status_text = "[green]🔗 found in graph[/green]"
         else:
-            status_text = "[red]● missing[/red]"
+            status_text = "[red]❌ missing from graph[/red]"
 
         table.add_row(
             str(row.get("pipeline", "") or ""),
@@ -304,20 +304,20 @@ def _print_pipeexec_table(rows: list[dict]) -> None:
 
     console.print(table)
 
-    resolved = sum(1 for row in rows if row.get("status") == "resolved")
+    found = sum(1 for row in rows if row.get("status") == "resolved")
     missing = sum(1 for row in rows if row.get("status") == "missing")
 
     summary = Table.grid(padding=(0, 3))
     summary.add_column(style="gold1")
     summary.add_column(style="white")
 
-    summary.add_row("🔗 PipeExec snaps", str(len(rows)))
-    summary.add_row("✅ Resolved", f"[green]{resolved}[/green]")
-    summary.add_row("❗ Missing", f"[red]{missing}[/red]")
+    summary.add_row("🔀 Child references", str(len(rows)))
+    summary.add_row("🔗 Found in graph", f"[green]{found}[/green]")
+    summary.add_row("❌ Missing from graph", f"[red]{missing}[/red]")
 
     console.print()
     console.print(summary)
-
+    
 def _clean_child_pipeline(value: str | None) -> str:
     """Return a readable child pipeline name from a stored PipeExec path."""
     if not value:
