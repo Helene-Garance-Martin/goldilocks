@@ -197,12 +197,52 @@ def _print_findings(findings: dict) -> None:
         findings["script_snaps"],
         ["pipeline", "snap"],
     )
+def _print_findings(findings: dict) -> None:
+    """Render audit findings as Rich tables."""
+
+    summary = findings["summary"]
+
+    summary_table = Table(
+        title="🔎 Graph Audit Summary",
+        show_header=True,
+        header_style="bold yellow",
+    )
+    summary_table.add_column("Metric", style="cyan")
+    summary_table.add_column("Count", style="green", justify="right")
+
+    summary_table.add_row("Pipelines", str(summary.get("pipelines", 0)))
+    summary_table.add_row("Snaps", str(summary.get("snaps", 0)))
+    summary_table.add_row("Large pipelines", str(len(findings["large_pipelines"])))
+    summary_table.add_row("HTTP snaps", str(len(findings["http_snaps"])))
+    summary_table.add_row("Script snaps", str(len(findings["script_snaps"])))
+    summary_table.add_row("PipeExec snaps", str(len(findings["pipeexec_snaps"])))
+    summary_table.add_row("Router pipelines", str(len(findings["router_pipelines"])))
+    summary_table.add_row(
+        "Context-wiping snaps",
+        str(len(findings["context_wiping_snaps"])),
+    )
+
+    console.print(summary_table)
 
     _print_simple_table(
-        "🔀 PipeExec calls",
-        findings["pipeexec_snaps"],
-        ["pipeline", "snap", "child_pipeline", "resolved_child", "status"],
+        "⚠️ Large pipelines",
+        findings["large_pipelines"],
+        ["pipeline", "snap_count"],
     )
+
+    _print_simple_table(
+        "🌐 HTTP snaps",
+        findings["http_snaps"],
+        ["pipeline", "snap"],
+    )
+
+    _print_simple_table(
+        "📜 Script snaps",
+        findings["script_snaps"],
+        ["pipeline", "snap"],
+    )
+
+    _print_pipeexec_table(findings["pipeexec_snaps"])
 
     _print_simple_table(
         "🧭 Router pipelines",
@@ -221,6 +261,62 @@ def _print_findings(findings: dict) -> None:
         findings["emails"],
         ["labels", "property", "value"],
     )
+
+
+def _print_pipeexec_table(rows: list[dict]) -> None:
+    """Render PipeExec child pipeline references with status styling."""
+
+    console.print()
+
+    if not rows:
+        console.print("[green]✅ 🔀 PipeExec calls: none found[/green]")
+        return
+
+    table = Table(
+        title="🔀 PipeExec calls · child pipeline references",
+        show_header=True,
+        header_style="bold gold1",
+        border_style="gold3",
+        row_styles=["", "dim"],
+    )
+
+    table.add_column("Pipeline", style="white")
+    table.add_column("Snap", style="bright_blue")
+    table.add_column("Child Pipeline", style="white")
+    table.add_column("Resolved Child", style="gold1")
+    table.add_column("Status")
+
+    for row in rows:
+        status = row.get("status", "")
+
+        if status == "resolved":
+            status_text = "[green]● resolved[/green]"
+        else:
+            status_text = "[red]● missing[/red]"
+
+        table.add_row(
+            str(row.get("pipeline", "") or ""),
+            str(row.get("snap", "") or ""),
+            str(row.get("child_pipeline", "") or ""),
+            str(row.get("resolved_child", "") or "—"),
+            status_text,
+        )
+
+    console.print(table)
+
+    resolved = sum(1 for row in rows if row.get("status") == "resolved")
+    missing = sum(1 for row in rows if row.get("status") == "missing")
+
+    summary = Table.grid(padding=(0, 3))
+    summary.add_column(style="gold1")
+    summary.add_column(style="white")
+
+    summary.add_row("🔗 PipeExec snaps", str(len(rows)))
+    summary.add_row("✅ Resolved", f"[green]{resolved}[/green]")
+    summary.add_row("❗ Missing", f"[red]{missing}[/red]")
+
+    console.print()
+    console.print(summary)
 
 def _clean_child_pipeline(value: str | None) -> str:
     """Return a readable child pipeline name from a stored PipeExec path."""
