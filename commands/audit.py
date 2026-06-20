@@ -283,28 +283,46 @@ def _print_pipeexec_table(rows: list[dict]) -> None:
     tree = Tree("[bold gold1]🔀 Pipeline Calls[/bold gold1]")
 
     for pipeline, calls in grouped.items():
-        pipeline_branch = tree.add(f"[bold white]{pipeline}[/bold white]")
+        pipeline_branch = tree.add(
+            f"[bold white]{pipeline}[/bold white]"
+        )
+
+        collapsed = defaultdict(list)
 
         for row in calls:
-            snap = row.get("snap", "") or "Unknown snap"
-            child = row.get("child_pipeline", "") or "Unknown child"
-            resolved_child = row.get("resolved_child", "") or child
-            status = row.get("status", "")
+            key = (
+                row.get("snap", "") or "Unknown snap",
+                row.get("resolved_child", "")
+                or row.get("child_pipeline", "")
+                or "Unknown child",
+                row.get("status", "") or "missing",
+            )
+            collapsed[key].append(row)
+
+        for (snap, child, status), grouped_rows in collapsed.items():
+            count = len(grouped_rows)
 
             snap_branch = pipeline_branch.add(
                 f"[bright_blue]↳ {snap}[/bright_blue]"
             )
 
+            suffix = (
+                f" [dim]({count} references)[/dim]"
+                if count > 1
+                else ""
+            )
+
             child_branch = snap_branch.add(
-                f"[gold1]↳ {resolved_child}[/gold1]"
+                f"[gold1]↳ {child}[/gold1]{suffix}"
             )
 
             if status == "resolved":
-                child_branch.add("[green]🔗 found in graph[/green]")
+                child_branch.add(
+                    "[green]🔗 found in graph[/green]"
+                )
             else:
                 child_branch.add(
-                    f"[red]❌ missing from graph[/red] "
-                    f"[dim]({child})[/dim]"
+                    "[red]❌ missing from graph[/red]"
                 )
 
     console.print(tree)
@@ -322,6 +340,7 @@ def _print_pipeexec_table(rows: list[dict]) -> None:
 
     console.print()
     console.print(summary)
+    
     
 def _clean_child_pipeline(value: str | None) -> str:
     """Return a readable child pipeline name from a stored PipeExec path."""
