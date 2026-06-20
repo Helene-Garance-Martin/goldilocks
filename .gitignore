@@ -231,4 +231,4 @@ Modelfile
 
 # Environment
 .env
-.env*
+.env*n_*
