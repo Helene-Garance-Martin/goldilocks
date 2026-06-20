@@ -6,6 +6,9 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from collections import defaultdict
+from rich.tree import Tree
+
 from commands.colours import CYAN, GREEN, RED, YELLOW, RESET
 
 console = Console()
@@ -264,45 +267,47 @@ def _print_findings(findings: dict) -> None:
 
 
 def _print_pipeexec_table(rows: list[dict]) -> None:
-    """Render PipeExec child pipeline references with status styling."""
+    """Render PipeExec child pipeline references grouped by parent pipeline."""
 
     console.print()
 
     if not rows:
-        console.print("[green]✅ 🔀 PipeExec calls: none found[/green]")
+        console.print("[green]✅ 🔀 Pipeline calls: none found[/green]")
         return
 
-    table = Table(
-        title="🔀 PipeExec calls · child pipeline references",
-        show_header=True,
-        header_style="bold gold1",
-        border_style="gold3",
-        row_styles=["", "dim"],
-    )
-
-    table.add_column("Pipeline", style="white")
-    table.add_column("Snap", style="bright_blue")
-    table.add_column("Child Pipeline", style="white")
-    table.add_column("Resolved Child", style="gold1")
-    table.add_column("Status")
+    grouped = defaultdict(list)
 
     for row in rows:
-        status = row.get("status", "")
+        grouped[row.get("pipeline", "Unknown")].append(row)
 
-        if status == "resolved":
-            status_text = "[green]🔗 found in graph[/green]"
-        else:
-            status_text = "[red]❌ missing from graph[/red]"
+    tree = Tree("[bold gold1]🔀 Pipeline Calls[/bold gold1]")
 
-        table.add_row(
-            str(row.get("pipeline", "") or ""),
-            str(row.get("snap", "") or ""),
-            str(row.get("child_pipeline", "") or ""),
-            str(row.get("resolved_child", "") or "—"),
-            status_text,
-        )
+    for pipeline, calls in grouped.items():
+        pipeline_branch = tree.add(f"[bold white]{pipeline}[/bold white]")
 
-    console.print(table)
+        for row in calls:
+            snap = row.get("snap", "") or "Unknown snap"
+            child = row.get("child_pipeline", "") or "Unknown child"
+            resolved_child = row.get("resolved_child", "") or child
+            status = row.get("status", "")
+
+            snap_branch = pipeline_branch.add(
+                f"[bright_blue]↳ {snap}[/bright_blue]"
+            )
+
+            child_branch = snap_branch.add(
+                f"[gold1]↳ {resolved_child}[/gold1]"
+            )
+
+            if status == "resolved":
+                child_branch.add("[green]🔗 found in graph[/green]")
+            else:
+                child_branch.add(
+                    f"[red]❌ missing from graph[/red] "
+                    f"[dim]({child})[/dim]"
+                )
+
+    console.print(tree)
 
     found = sum(1 for row in rows if row.get("status") == "resolved")
     missing = sum(1 for row in rows if row.get("status") == "missing")
