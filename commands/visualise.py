@@ -1,12 +1,16 @@
 # commands/visualise.py
 import os
-import webbrowser
 from pathlib import Path
 
-import pyperclip
 import typer
 from commands.colours import CYAN, GREEN, RED, GOLD, RESET
 
+from src.output_manager import (
+    open_rendered_file,
+    print_confluence_hint,
+    print_output_hint,
+    copy_mermaid_to_clipboard,
+)
 
 def visualise(
     pipeline: str = typer.Argument(
@@ -95,15 +99,15 @@ def visualise(
         copied = False
 
         if clipboard:
-            copied = _copy_mermaid_to_clipboard(final_path)
+            copied = copy_mermaid_to_clipboard(final_path)
 
-        _print_confluence_hint(final_path, copied=copied)
+        print_confluence_hint(final_path, copied=copied)
         return
 
     if open_after:
-        _open_rendered_file(final_path)
+        open_rendered_file(final_path)
     else:
-        _print_output_hint(final_path)
+        print_output_hint(final_path)
 
 def _pipeline_menu() -> str:
     """Interactive pipeline selector, shown only when no name is given."""
@@ -188,82 +192,4 @@ def _render_from_traversal(
     final = render_diagram(mmd_path, fmt)
     return final
 
-def _open_rendered_file(path: Path) -> None:
-    """Open rendered diagram when supported."""
 
-    if path.suffix not in [".svg", ".png"]:
-        typer.echo(
-            f"{GOLD}💡 --open currently supports svg/png outputs{RESET}"
-        )
-        return
-
-    if os.environ.get("CODESPACES"):
-        typer.echo(
-            f"\n{GOLD}💡 remote environment — "
-            f"open the rendered file from VS Code{RESET}"
-        )
-        return
-
-    webbrowser.open(path.resolve().as_uri())
-
-def _open_rendered_file(path: Path) -> None:
-    """Open rendered diagram when supported."""
-
-    if path.suffix not in [".svg", ".png"]:
-        typer.echo(
-            f"{GOLD}💡 --open currently supports svg/png outputs{RESET}"
-        )
-        return
-
-    if os.environ.get("CODESPACES"):
-        typer.echo(
-            f"\n{GOLD}💡 remote environment — "
-            f"open the rendered file from VS Code{RESET}"
-        )
-        return
-
-    webbrowser.open(path.resolve().as_uri())
-
-
-def _print_confluence_hint(path: Path, copied: bool = False) -> None:
-    """Print Confluence paste instructions for Mermaid output."""
-
-    if path.suffix != ".mmd":
-        typer.echo(
-            f"{GOLD}💡 Confluence Mermaid works best with .mmd output{RESET}"
-        )
-        return
-
-    typer.echo(
-        f"\n{GREEN}✅ Ready to paste into Confluence Mermaid macro.{RESET}"
-    )
-
-    if copied:
-        typer.echo(f"{GREEN}📋 Mermaid code copied to clipboard.{RESET}")
-    else:
-        typer.echo(
-            f"{GOLD}💡 Open this file and copy the Mermaid code:{RESET}"
-        )
-        typer.echo(f"   {path.resolve()}")
-
-def _print_output_hint(path):
-    """Print where the rendered diagram was saved."""
-    typer.echo(f"{GREEN}✅ Diagram written to: {path}{RESET}")
-
-def _copy_mermaid_to_clipboard(path: Path) -> bool:
-    """Copy Mermaid file contents to clipboard."""
-
-    if path.suffix != ".mmd":
-        return False
-
-    try:
-        text = path.read_text(encoding="utf-8")
-        pyperclip.copy(text)
-        return True
-
-    except Exception as e:
-        typer.echo(
-            f"{GOLD}💡 Could not copy to clipboard: {e}{RESET}"
-        )
-        return False
-    
