@@ -89,10 +89,18 @@ def _collect_findings(session) -> dict:
             """
             MATCH (p:Pipeline)-[:HAS_SNAP]->(s:Snap)
             WHERE s.type = "pipeexec"
+            OPTIONAL MATCH (p)-[:CALLS]->(child:Pipeline)
+            WHERE s.child_pipeline CONTAINS child.name
+               OR child.name CONTAINS s.child_pipeline
             RETURN
                 p.name AS pipeline,
                 s.label AS snap,
-                s.child_pipeline AS child_pipeline
+                s.child_pipeline AS child_pipeline,
+                child.name AS resolved_child,
+                CASE
+                    WHEN child.name IS NULL THEN "missing"
+                    ELSE "resolved"
+                END AS status
             ORDER BY pipeline, snap
             """
         ),
@@ -132,6 +140,7 @@ def _collect_findings(session) -> dict:
         row["child_pipeline"] = _clean_child_pipeline(
             row.get("child_pipeline")
         )
+        row["resolved_child"] = row.get("resolved_child") or ""
 
     return findings
 
@@ -192,7 +201,7 @@ def _print_findings(findings: dict) -> None:
     _print_simple_table(
         "🔀 PipeExec calls",
         findings["pipeexec_snaps"],
-        ["pipeline", "snap", "child_pipeline"],
+        ["pipeline", "snap", "child_pipeline", "resolved_child", "status"],
     )
 
     _print_simple_table(
