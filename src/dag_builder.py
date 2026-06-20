@@ -9,7 +9,7 @@ def build_dag(session, pipeline_name: str) -> DAGModel:
     result = session.run(
         """
         MATCH (p:Pipeline)
-        WHERE toLower(p.name) CONTAINS toLower($name)
+        WHERE p.name = $name
 
         MATCH (p)-[:HAS_SNAP]->(s:Snap)
 
