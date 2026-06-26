@@ -4,6 +4,11 @@
 # Natural language interface to the Neo4j pipeline graph.
 # Uses Anthropic API for development, swappable to Ollama.
 #
+# Model: claude-sonnet-4-6
+#   Capable enough for Cypher generation and warm explanation,
+#   ~5x cheaper per query than Opus and still accepts the
+#   temperature parameter (deprecated on Opus 4.7).
+#
 # Two temperatures:
 #   0.1 → precise Cypher generation
 #   0.5 → warm plain English explanation
@@ -59,7 +64,7 @@ def generate_cypher(question: str, schema: str) -> str:
     """Convert natural language question to Cypher query."""
     
     response = client.messages.create(
-        model="claude-opus-4-5",
+        model="claude-sonnet-4-6",
         max_tokens=500,
         temperature=0.1,
         messages=[{
@@ -102,7 +107,7 @@ Convert this question to Cypher:
 Return ONLY the Cypher query, nothing else."""
         }]
     )
-    return clean_answer(response.content[0].text)
+    return clean_cypher(clean_answer(response.content[0].text))
 
 
 # ------------------------------------------------------------
@@ -113,7 +118,7 @@ def explain_results(question: str, results: list) -> str:
     """Convert Neo4j results to plain English explanation."""
 
     response = client.messages.create(
-        model="claude-opus-4-5",
+        model="claude-sonnet-4-6",
         max_tokens=800,
         temperature=0.5,
         system=f"""You are Goldilocks — a pipeline intelligence assistant for arts organisations.
@@ -193,7 +198,7 @@ def ask_goldilocks(question: str) -> str:
     # ── Fun triggers ───────────────────────────────────────
     if any(trigger in question.lower() for trigger in FUN_TRIGGERS):
         response = client.messages.create(
-            model="claude-opus-4-5",
+            model="claude-sonnet-4-6",
             max_tokens=200,
             temperature=1.0,
             messages=[{
