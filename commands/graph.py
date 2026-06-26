@@ -162,13 +162,21 @@ def show_graph(
                             " ⚠️ Large" if parent_stats["snap_count"] > 30 else ""
                         )
 
+                        children = family["children"]
+                        child_count = len(children)
+
                         typer.echo(f"  {idx}. 🔗 {family['parent_name']}")
                         typer.echo(
-                            f"      ├── 🔑 {family['parent_name']} "
-                            f"({parent_stats['snap_count']} snaps · parent{parent_warning})"
+                            f"      ├── 📊 {parent_stats['snap_count']} snaps"
+                            f"{parent_warning}"
+                        )
+                        typer.echo(
+                            f"      ├── 📤 Calls: {child_count}"
+                        )
+                        typer.echo(
+                            f"      ├── 📥 Called by: 0"
                         )
 
-                        children = family["children"]
                         for i, child in enumerate(children):
                             branch = "└──" if i == len(children) - 1 else "├──"
                             child_stats = get_snap_stats(session, child["id"])
@@ -177,9 +185,9 @@ def show_graph(
                             )
                             typer.echo(
                                 f"      {branch} 📤 {child['name']} "
-                                f"({child_stats['snap_count']} snaps · child{child_warning})"
+                                f"({child_stats['snap_count']} snaps{child_warning})"
                             )
-
+                            
                         menu_items.append({
                             "type": "family",
                             "parent": family,
@@ -277,10 +285,12 @@ def show_graph(
                         size_warning = ""
 
                     pipe_tree = root.add(
-                        f"[cyan]📊 {p['name']}[/cyan] "
-                        f"[dim]({snap_str} · {parent_str} · {child_str})[/dim]"
-                        f"{size_warning}"
+                        f"[cyan]📊 {p['name']}[/cyan]{size_warning}"
                     )
+
+                    pipe_tree.add(f"[dim]📊 {snap_str}[/dim]")
+                    pipe_tree.add(f"[dim]📤 Calls: {p['children']}[/dim]")
+                    pipe_tree.add(f"[dim]📥 Called by: {p['parents']}[/dim]")
 
                     upstream = get_upstream_names(session, p["id"])
                     downstream = get_downstream_calls(session, p["id"])
