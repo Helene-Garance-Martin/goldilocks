@@ -10,7 +10,7 @@ def anonymise(
     output: str = typer.Option("export_anonymised.json", help="Path to write anonymised output"),
 ):
     """
-    🔒 Anonymise a sanitised SnapLogic export.
+    🔒 Anonymise a sanitised export.
 
     Strips org names, URLs and credentials —
     safe to share publicly or commit to GitHub.

@@ -6,11 +6,11 @@ from commands.colours import CYAN, GREEN, RED, RESET
 console = Console()
 
 def sanitise(
-    input: str = typer.Option(..., help="Path to raw export.json from SnapLogic"),
+    input: str = typer.Option(..., help="Path to raw integration pipeline export"),
     output: str = typer.Option("export_clean.json", help="Path to write sanitised output"),
 ):
     """
-    🧹 Sanitise a raw SnapLogic export.
+    🧹 Sanitise a raw integration pipeline export.
 
     Strips UI noise, rendering data and internal metadata —
     keeping only what Goldilocks needs for parsing and graphing.
