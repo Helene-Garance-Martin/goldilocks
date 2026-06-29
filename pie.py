@@ -28,6 +28,7 @@ from commands.anonymise import anonymise
 from commands.audit import audit
 from commands.graph import show_graph
 from commands.stats import stats
+from commands.sieve import sieve
 
 
 
@@ -130,6 +131,8 @@ app.command()(seed)
 app.command()(ask)
 
 # app.command()(run)
+
+app.command()(sieve)
 
 app.command()(anonymise)
 
