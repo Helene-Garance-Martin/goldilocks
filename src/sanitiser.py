@@ -5,7 +5,7 @@
 # metadata from pipeline exports — keeping only what
 # Goldilocks needs for parsing, graphing and visualising.
 # ============================================================
-
+import time
 import json
 from pathlib import Path
 
@@ -191,9 +191,13 @@ def sanitise_export(input_path: str, output_path: str) -> None:
     clean_size    = output_file.stat().st_size
 
     print(f"✅ Clean file written to: {output_path}")
+    time.sleep(0.2)
     print(f"\n📊 Summary:")
+    time.sleep(0.15)
     print(f"   Original size:  {original_size:,} bytes")
+    time.sleep(0.1)
     print(f"   Clean size:     {clean_size:,} bytes")
+    time.sleep(0.1)
 
     if clean_size > original_size:
         difference = round((clean_size / original_size - 1) * 100)
@@ -206,8 +210,11 @@ def sanitise_export(input_path: str, output_path: str) -> None:
         for i, entry in enumerate(clean_data["entries"]):
             snap_count = len(entry.get("snap_map", {}))
             link_count = len(entry.get("link_map", {}))
+            time.sleep(0.2)
             print(f"\n   Pipeline {i+1}: {entry.get('name', 'unknown')}")
+            time.sleep(0.1)
             print(f"     Snaps (nodes): {snap_count}")
+            time.sleep(0.1)
             print(f"     Links (edges): {link_count}")
 
 

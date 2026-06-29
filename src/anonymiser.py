@@ -11,7 +11,7 @@ Replaces:
   - URLs and endpoints            → https://api.org-1.com/endpoint-1 ...
   - Credentials / tokens          → token_abc123, secret_xyz789 ...
 """
-
+import time
 import json
 import re
 import hashlib
@@ -133,6 +133,7 @@ def anonymise_pipeline(input_path: str, output_path: str) -> None:
         return
 
     print(f"🔍  Reading: {input_path}")
+    time.sleep(0.2)
 
     try:
         pipeline_json = json.loads(input_file.read_text(encoding="utf-8"))
@@ -145,19 +146,24 @@ def anonymise_pipeline(input_path: str, output_path: str) -> None:
         return
 
     print("🏢  Anonymising organisation names...")
+    time.sleep(0.25)
     print("🌐  Anonymising URLs and endpoints...")
+    time.sleep(0.25)
     print("🔑  Anonymising credentials and tokens...")
+    time.sleep(0.25)
 
     pipeline_json = anonymise_credentials(pipeline_json)
-
     clean = json.dumps(pipeline_json, indent=2)
-
     clean = anonymise_org_names(clean)
-
     output_file.write_text(clean, encoding="utf-8")
 
     print(f"✅  Clean file written to: {output_path}")
+    time.sleep(0.2)
     print(f"\n📊  Summary:")
+    time.sleep(0.15)
     print(f"    Orgs replaced:   {len(org_lookup)}")
+    time.sleep(0.1)
     print(f"    URLs replaced:   {len(url_lookup)}")
+    time.sleep(0.1)
     print(f"    (Credentials replaced inline throughout)")
+...
