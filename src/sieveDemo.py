@@ -3,86 +3,79 @@ import sys
 import random
 
 # ============================================================
-# 🫧 GOLDILOCKS — Sieve Animation (top-to-bottom)
-# ============================================================
-# A horizontal bar thickens over time (the sieve).
-# Particles fall from above, flurry to trickle.
-# At completion the bar is at full thickness, the flurry
-# has nearly stopped, and the closing line resolves.
+# 🫧 GOLDILOCKS — Sieve Animation (bottom-up settling)
 # ============================================================
 
 WIDTH = 50
-HEIGHT = 6                # rows of falling space below the bar
-PARTICLES = ['·', '⋅', '.', '˙', ',']
-FRAMES = 80               # total animation length
-FRAME_DELAY = 0.05        # seconds per frame
+HEIGHT = 8
+FRAMES = 80
+FRAME_DELAY = 0.05
+
+PARTICLES = ["·", "⋅", ".", "˙", ",", "¸"]
+PILE_CHARS = ["─", "━", "▓"]
 
 
-def new_row(density):
-    """Generate one row of particles at the given density."""
-    return [
-        random.choice(PARTICLES) if random.random() < density else ' '
+def particle_row(density):
+    return "".join(
+        random.choice(PARTICLES) if random.random() < density else " "
         for _ in range(WIDTH)
-    ]
+    )
 
 
-def render_bar(progress):
-    """Return the sieve bar — thickens as progress increases."""
-    if progress < 0.33:
-        char = '─'
-    elif progress < 0.66:
-        char = '━'
+def pile_row(progress):
+    """
+    The bottom line thickens as particles settle.
+    Starts thin, becomes dense.
+    """
+    if progress < 0.35:
+        char = PILE_CHARS[0]
+    elif progress < 0.7:
+        char = PILE_CHARS[1]
     else:
-        char = '▓'
-    # tiny horizontal jitter so it reads as "being shaken"
-    jitter = random.choice([0, 0, 1, -1, 0])
-    pad = max(0, 2 + jitter)
-    return ' ' * pad + char * WIDTH
+        char = PILE_CHARS[2]
+
+    return char * WIDTH
 
 
 def sieve_animate():
-    # claim vertical space for the bar + falling rows + closing line
-    rows = [new_row(0.4) for _ in range(HEIGHT)]
-    for _ in range(HEIGHT + 2):
+    # Reserve terminal space
+    for _ in range(HEIGHT + 4):
         print()
 
     for frame in range(FRAMES):
-        progress = frame / FRAMES
+        progress = frame / (FRAMES - 1)
 
-        # density curve: starts at ~0.45 (flurry), ends near 0.02 (trickle)
-        density = max(0.02, 0.45 * (1 - progress))
+        # Flurry gets heavier toward the bottom/finish
+        density = 0.08 + (progress * 0.45)
 
-        # shift everything down — last row falls off
-        rows = [new_row(density)] + rows[:-1]
-
-        # move cursor up to overwrite previous frame
+        # Move cursor back up
         sys.stdout.write(f"\033[{HEIGHT + 4}A")
 
-        print()
+        # Falling particles above the settling line
+        for row_index in range(HEIGHT):
+            closeness_to_bottom = row_index / HEIGHT
+            row_density = density * closeness_to_bottom
+            print(f"  {particle_row(row_density)}\033[K")
 
-        # draw the bar
-        print(f"  {render_bar(progress)}")
+        # Settled layer at the bottom
+        print(f"  {pile_row(progress)}\033[K")
 
+        # No completion message yet
+        print("\033[K")
+        print("\033[K")
 
-        # draw falling particles below it
-        for row in rows:
-            print(f"  {''.join(row)}")
-
-        # blank line at the bottom for breathing room
-        print()
-
-        sys.stdout.write("\033[K")  # clear any trailing artefacts
         time.sleep(FRAME_DELAY)
 
-    # final state — bar at full thickness, sparse trickle, resolve
-    sys.stdout.write(f"\033[{HEIGHT + 2}A")
-    print(f"  {' ' * 2}{'▓' * WIDTH}")
+    # Final settled state
+    sys.stdout.write(f"\033[{HEIGHT + 4}A")
+
     for _ in range(HEIGHT):
-        print(f"  {''.join(new_row(0.02))}")
+        print(f"  {'▓' * WIDTH}\033[K")
 
+    print(f"  {'▓' * WIDTH}\033[K")
     print()
-
-    print(f"  🫧 sieved · just right\n")
+    print("  🫧 sieved ")
+    print()
 
 
 if __name__ == "__main__":
