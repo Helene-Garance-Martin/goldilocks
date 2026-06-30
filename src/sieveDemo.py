@@ -70,9 +70,10 @@ def sieve_animate():
     sys.stdout.write(f"\033[{HEIGHT + 4}A")
 
     for _ in range(HEIGHT):
-        print(f"  {'▓' * WIDTH}\033[K")
+        print(f"  {' ' * WIDTH}\033[K")
 
-    print(f"  {'▓' * WIDTH}\033[K")
+    
+    print(f"  {'━' * WIDTH}\033[K")
     print()
     print("  🫧 sieved ")
     print()
