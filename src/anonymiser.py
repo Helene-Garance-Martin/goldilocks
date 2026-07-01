@@ -3,7 +3,7 @@ anonymiser.py
 -------------
 Goldilocks Pipeline Intelligence Platform
 
-Scrubs sensitive data from SnapLogic pipeline exports (.slp / JSON)
+Scrubs sensitive data from pipeline exports (.slp / JSON)
 before pushing to GitHub or sharing publicly.
 
 Replaces:
@@ -122,8 +122,21 @@ def anonymise_credentials(obj):
         return obj
 
 
-def anonymise_pipeline(input_path: str, output_path: str) -> None:
-    """Main function — reads, scrubs, and writes the clean pipeline file."""
+def anonymise_pipeline(
+    input_path: str,
+    output_path: str,
+    on_progress: callable = None,
+) -> None:
+    """Main function — reads, scrubs, and writes the clean pipeline file.
+
+    Args:
+        input_path:  Path to the sanitised pipeline JSON.
+        output_path: Path to write the anonymised output.
+        on_progress: Optional callback(phase, current, total, message).
+                     Fires twice — once after credentials + URLs are done,
+                     once after org names — matching the two actual work
+                     phases in the code.
+    """
 
     input_file  = Path(input_path)
     output_file = Path(output_path)
@@ -133,7 +146,6 @@ def anonymise_pipeline(input_path: str, output_path: str) -> None:
         return
 
     print(f"🔍  Reading: {input_path}")
-    time.sleep(0.2)
 
     try:
         pipeline_json = json.loads(input_file.read_text(encoding="utf-8"))
@@ -145,16 +157,22 @@ def anonymise_pipeline(input_path: str, output_path: str) -> None:
         output_file.write_text(raw, encoding="utf-8")
         return
 
-    print("🏢  Anonymising organisation names...")
-    time.sleep(0.25)
-    print("🌐  Anonymising URLs and endpoints...")
-    time.sleep(0.25)
-    print("🔑  Anonymising credentials and tokens...")
-    time.sleep(0.25)
+    if on_progress:
+        on_progress("anonymising", 0, 2, "starting")
 
+    # ── Phase 1: credentials + URLs (single recursive walk) ──────────
+    print("🔑  Anonymising credentials and URLs...")
     pipeline_json = anonymise_credentials(pipeline_json)
+    if on_progress:
+        on_progress("anonymising", 1, 2, "credentials & URLs")
+
+    # ── Phase 2: organisation names (text regex over the JSON) ───────
+    print("🏢  Anonymising organisation names...")
     clean = json.dumps(pipeline_json, indent=2)
     clean = anonymise_org_names(clean)
+    if on_progress:
+        on_progress("anonymising", 2, 2, "organisations")
+
     output_file.write_text(clean, encoding="utf-8")
 
     print(f"✅  Clean file written to: {output_path}")
@@ -166,4 +184,3 @@ def anonymise_pipeline(input_path: str, output_path: str) -> None:
     print(f"    URLs replaced:   {len(url_lookup)}")
     time.sleep(0.1)
     print(f"    (Credentials replaced inline throughout)")
-...

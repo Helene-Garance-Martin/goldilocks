@@ -49,3 +49,5 @@ def sieve(
         raise typer.Exit(1)
 
     typer.echo(f"{GOLD}{BOLD}🫧 Sieve complete — data ready to seed.{RESET}\n")
+
+    

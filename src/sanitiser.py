@@ -158,8 +158,22 @@ def sanitise_pipeline(pipeline: dict) -> dict:
     return clean
 
 
-def sanitise_export(input_path: str, output_path: str) -> None:
-    """Main function — reads, sanitises and writes clean pipeline export."""
+def sanitise_export(
+    input_path: str,
+    output_path: str,
+    on_progress: callable = None,
+) -> None:
+    """Main function — reads, sanitises and writes clean pipeline export.
+
+    Args:
+        input_path:  Path to the raw pipeline export JSON.
+        output_path: Path to write the sanitised output.
+        on_progress: Optional callback(phase, current, total, message).
+                     Fired at key milestones so a caller (e.g. sieve)
+                     can render a progress bar. Signature stable across
+                     sanitiser + anonymiser so the same callback shape
+                     works for both.
+    """
     input_file  = Path(input_path)
     output_file = Path(output_path)
 
@@ -172,16 +186,35 @@ def sanitise_export(input_path: str, output_path: str) -> None:
         data = json.load(f)
 
     if "entries" in data:
-        print(f"📦 Project export — found {len(data['entries'])} pipeline(s)")
-        clean_entries = [sanitise_pipeline(entry) for entry in data["entries"]]
+        total = len(data['entries'])
+        print(f"📦 Project export — found {total} pipeline(s)")
+
+        if on_progress:
+            on_progress("sanitising", 0, total, "starting")
+
+        clean_entries = []
+        for i, entry in enumerate(data["entries"]):
+            clean_entries.append(sanitise_pipeline(entry))
+            if on_progress:
+                on_progress(
+                    "sanitising",
+                    i + 1,
+                    total,
+                    entry.get("name", "unknown"),
+                )
+
         clean_data = {
             "project_name": data.get("project_name", ""),
             "path":         data.get("path", ""),
-            "entries":      clean_entries
+            "entries":      clean_entries,
         }
     else:
         print("📄 Single pipeline export")
+        if on_progress:
+            on_progress("sanitising", 0, 1, "single pipeline")
         clean_data = sanitise_pipeline(data)
+        if on_progress:
+            on_progress("sanitising", 1, 1, "done")
 
     output_file.parent.mkdir(parents=True, exist_ok=True)
     with open(output_file, 'w', encoding='utf-8') as f:
@@ -216,5 +249,4 @@ def sanitise_export(input_path: str, output_path: str) -> None:
             print(f"     Snaps (nodes): {snap_count}")
             time.sleep(0.1)
             print(f"     Links (edges): {link_count}")
-
 
