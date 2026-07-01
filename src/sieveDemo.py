@@ -2,13 +2,21 @@ import time
 import sys
 import random
 
+# ============================================================
+# 🫧 GOLDILOCKS — Sieve Animation
+# top solid line, dotted mesh, left/right tilt, settles centre
+# ============================================================
+
 WIDTH = 50
 HEIGHT = 8
 FRAMES = 80
 FRAME_DELAY = 0.05
 
+SIEVE_WIDTH = 28
+SIEVE_PAD = 12
+
 PARTICLES = ["·", "⋅", ".", "˙", ",", "¸"]
-PILE_CHARS = ["─", "━", "▓"]
+PILE_CHARS = ["─", "▀", "▀"]
 
 
 def particle_row(density, offset=0):
@@ -25,9 +33,40 @@ def particle_row(density, offset=0):
     return row[:WIDTH].ljust(WIDTH)
 
 
-def sieve_line(frame):
-    jitter = [0, 1, 2, 1, 0, -1, -2, -1][frame % 8]
-    return " " * (4 + jitter) + "-" * 28, jitter
+def sieve_lines(frame, final=False):
+    """
+    Draw a two-line sieve:
+    - top line is continuous
+    - bottom line is dotted mesh
+    - whole sieve jitters left/right
+    - tilt changes during the animation
+    """
+
+    movement = [0, 1, 2, 1, 0, -1, -2, -1]
+    jitter = 0 if final else movement[frame % len(movement)]
+
+    progress = frame / (FRAMES - 1)
+
+    if final:
+        tilt = 0
+    elif progress < 0.25:
+        tilt = -2       # tilt left
+    elif progress < 0.5:
+        tilt = 0        # centre
+    elif progress < 0.75:
+        tilt = 2        # tilt right
+    else:
+        tilt = -2       # final little left shake before settling
+
+    pad = SIEVE_PAD + jitter
+
+    top_pad = pad + max(tilt, 0)
+    bottom_pad = pad + max(-tilt, 0)
+
+    top = " " * top_pad + "╭" + "─" * SIEVE_WIDTH + "╮"
+    bottom = " " * bottom_pad + "╰" + "·" * SIEVE_WIDTH + "╯"
+
+    return top, bottom, jitter
 
 
 def pile_row(progress):
@@ -42,19 +81,25 @@ def pile_row(progress):
 
 
 def sieve_animate():
-    total_lines = HEIGHT + 5
+    total_lines = HEIGHT + 6
 
     for _ in range(total_lines):
         print()
 
     for frame in range(FRAMES):
         progress = frame / (FRAMES - 1)
-        density = 0.08 + (progress * 0.45)
+
+        # flurry rises, then fades near the end
+        if progress < 0.7:
+            density = 0.08 + (progress * 0.45)
+        else:
+            density = 0.22 * (1 - progress)
 
         sys.stdout.write(f"\033[{total_lines}A")
 
-        line, jitter = sieve_line(frame)
-        print(f"  {line}\033[K")
+        top, bottom, jitter = sieve_lines(frame)
+        print(f"  {top}\033[K")
+        print(f"  {bottom}\033[K")
         print("\033[K")
 
         for row_index in range(HEIGHT):
@@ -72,16 +117,18 @@ def sieve_animate():
 
         time.sleep(FRAME_DELAY)
 
+    # final state — sieve centred, no particles, settled bar
     sys.stdout.write(f"\033[{total_lines}A")
 
-    final_line, _ = sieve_line(FRAMES)
-    print(f"  {final_line}\033[K")
+    top, bottom, _ = sieve_lines(FRAMES - 1, final=True)
+    print(f"  {top}\033[K")
+    print(f"  {bottom}\033[K")
     print("\033[K")
 
     for _ in range(HEIGHT):
         print(f"  {' ' * WIDTH}\033[K")
 
-    print(f"  {'━' * WIDTH}\033[K")
+    print(f"  {'▀' * WIDTH}\033[K")
     print()
     print("  🫧 sieved · just right")
     print()
