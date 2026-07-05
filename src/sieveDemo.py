@@ -1,138 +1,254 @@
-import time
+# src/sieveDemo.py
+# ============================================================
+# 🫧 GOLDILOCKS — Sieve Animation (progress-driven)
+# ============================================================
+# Physics (after the soil-sieving diagram):
+#   - open sieve: solid side walls, dotted mesh bottom, NO top rim
+#   - irregular clumps of material sit inside, shrinking as work runs
+#   - fine particles fall THROUGH the mesh, thinning over time
+#   - the pile at the bottom thickens: ─ → ▀
+#   - end state: a little coarse residue left in the mesh,
+#     air clear, pile complete. stillness = done.
+# ============================================================
+
 import sys
+import time
 import random
+import shutil
+import threading
 
-# ============================================================
-# 🫧 GOLDILOCKS — Sieve Animation
-# top solid line, dotted mesh, left/right tilt, settles centre
-# ============================================================
-
-WIDTH = 50
-HEIGHT = 8
-FRAMES = 80
 FRAME_DELAY = 0.05
 
 SIEVE_WIDTH = 28
 SIEVE_PAD = 12
+WIDTH = 50
 
 PARTICLES = ["·", "⋅", ".", "˙", ",", "¸"]
+CLUMP_PARTICLES = ["●", "●", "•", "▪", "◦"]
 PILE_CHARS = ["─", "▀", "▀"]
 
-
-def particle_row(density, offset=0):
-    row = "".join(
-        random.choice(PARTICLES) if random.random() < density else " "
-        for _ in range(WIDTH)
-    )
-
-    if offset > 0:
-        row = " " * offset + row
-    elif offset < 0:
-        row = row[abs(offset):]
-
-    return row[:WIDTH].ljust(WIDTH)
+MOUND_HEIGHT = 3          # rows of material inside the sieve
+FALL_ROWS = 8             # rows of falling space below the mesh
 
 
-def sieve_lines(frame, final=False):
-    """
-    Draw a two-line sieve:
-    - top line is continuous
-    - bottom line is dotted mesh
-    - whole sieve jitters left/right
-    - tilt changes during the animation
-    """
+class SieveAnimation:
+    """Runs in a background thread; fed by on_progress callbacks."""
 
-    movement = [0, 1, 2, 1, 0, -1, -2, -1]
-    jitter = 0 if final else movement[frame % len(movement)]
+    def __init__(self):
+        self.progress = 0.0
+        self.target = 0.0
+        self.message = "starting"
+        self.phase = "sieving"
+        self._stop = threading.Event()
+        self._thread = None
+        self._frame = 0
 
-    progress = frame / (FRAMES - 1)
+        # fixed clump map — irregular islands of material, so the
+        # mound reads as lumpy heaps rather than a smooth gradient
+        self._clumps = self._make_clumps()
 
-    if final:
-        tilt = 0
-    elif progress < 0.25:
-        tilt = -2       # tilt left
-    elif progress < 0.5:
-        tilt = 0        # centre
-    elif progress < 0.75:
-        tilt = 2        # tilt right
-    else:
-        tilt = -2       # final little left shake before settling
+        size = shutil.get_terminal_size()
+        self.term_height = size.lines
+        self.term_width = size.columns
 
-    pad = SIEVE_PAD + jitter
+    def _make_clumps(self):
+        """Random clump centres along the mesh — irregular heaps."""
+        clumps = []
+        x = 1
+        while x < SIEVE_WIDTH - 3:
+            width = random.randint(3, 8)
+            height = random.randint(1, MOUND_HEIGHT)   # some heaps taller
+            clumps.append((x, min(x + width, SIEVE_WIDTH - 1), height))
+            x += width + random.randint(1, 4)          # gaps between heaps
+        return clumps
 
-    top_pad = pad + max(tilt, 0)
-    bottom_pad = pad + max(-tilt, 0)
+    # ------------------------------------------------------
+    # PUBLIC API — matches on_progress(phase, current, total, message)
+    # ------------------------------------------------------
 
-    top = " " * top_pad + "╭" + "─" * SIEVE_WIDTH + "╮"
-    bottom = " " * bottom_pad + "╰" + "·" * SIEVE_WIDTH + "╯"
+    def update(self, phase, current, total, message):
+        base = 0.0 if phase == "sanitising" else 0.5
+        self.target = base + (current / max(total, 1)) * 0.5
+        self.phase = phase
+        self.message = message
 
-    return top, bottom, jitter
+    def start(self):
+        sys.stdout.write("\033[?1049h\033[?25l\033[H")
+        sys.stdout.flush()
+        self._thread = threading.Thread(target=self._run, daemon=True)
+        self._thread.start()
+
+    def finish(self, closing="🫧 sieved · just right"):
+        self.target = 1.0
+        time.sleep(FRAME_DELAY * 14)
+        self._stop.set()
+        self._thread.join()
+        self._final_frame(closing)
+        time.sleep(2.0)
+        self._restore()
+
+    def abort(self):
+        self._stop.set()
+        if self._thread:
+            self._thread.join()
+        self._restore()
+
+    def _restore(self):
+        sys.stdout.write("\033[?25h\033[?1049l")
+        sys.stdout.flush()
+
+    # ------------------------------------------------------
+    # DRAWING PIECES
+    # ------------------------------------------------------
+
+    def _jitter(self, final=False):
+        movement = [0, 1, 2, 1, 0, -1, -2, -1]
+        return 0 if final else movement[self._frame % len(movement)]
+
+    def _mound_row(self, row_from_top, jitter):
+        """One row inside the sieve. row_from_top 0 = highest.
+        Clumps are irregular islands; taller clumps reach higher rows.
+        Material shrinks with progress, top rows emptying first."""
+        p = self.progress
+        row_life = min(1.0, max(0.0, (p * (MOUND_HEIGHT + 1)) - row_from_top))
+        density = 0.85 * (1 - row_life)
+
+        # which row of the mound is this, counted from the mesh up
+        height_from_mesh = MOUND_HEIGHT - row_from_top
+
+        content = [" "] * SIEVE_WIDTH
+        for (start, end, clump_height) in self._clumps:
+            if clump_height >= height_from_mesh:
+                for x in range(start, end):
+                    if random.random() < density:
+                        content[x] = random.choice(CLUMP_PARTICLES)
+
+        body = "".join(content)
+        pad = SIEVE_PAD + jitter
+        return " " * pad + "│" + body + "│"
+
+    def _mesh_row(self, jitter):
+        pad = SIEVE_PAD + jitter
+        return " " * pad + "╰" + "·" * SIEVE_WIDTH + "╯"
+
+    def _falling_row(self, closeness, jitter):
+        p = self.progress
+        density = 0.45 * (1 - p) * closeness
+        row = "".join(
+            random.choice(PARTICLES) if random.random() < density else " "
+            for _ in range(WIDTH)
+        )
+        offset = int(jitter * (1 - closeness) * 0.6)
+        if offset > 0:
+            row = " " * offset + row
+        elif offset < 0:
+            row = row[abs(offset):]
+        return row[:WIDTH].ljust(WIDTH)
+
+    def _pile_row(self):
+        p = self.progress
+        char = PILE_CHARS[0] if p < 0.35 else PILE_CHARS[1] if p < 0.7 else PILE_CHARS[2]
+        return char * WIDTH
+
+    # ------------------------------------------------------
+    # FRAME
+    # ------------------------------------------------------
+
+    def _draw(self, final=False):
+        jitter = self._jitter(final)
+
+        lines = []
+        label = "" if final else f"  {self.phase} · {self.message}"
+        lines.append(label[: self.term_width])
+        lines.append("")
+
+        # open sieve — no top rim, walls + mound + mesh
+        for m in range(MOUND_HEIGHT):
+            lines.append(f"  {self._mound_row(m, jitter)}")
+        lines.append(f"  {self._mesh_row(jitter)}")
+        lines.append("")
+
+        for r in range(FALL_ROWS):
+            closeness = (r + 1) / FALL_ROWS
+            if final:
+                lines.append("")
+            else:
+                lines.append(f"  {self._falling_row(closeness, jitter)}")
+
+        lines.append(f"  {self._pile_row()}")
+
+        sys.stdout.write("\033[H")
+        for line in lines:
+            sys.stdout.write(f"{line}\033[K\n")
+        sys.stdout.write("\033[J")
+        sys.stdout.flush()
+
+    def _run(self):
+        while not self._stop.is_set():
+            self.progress += (self.target - self.progress) * 0.15
+            self._draw()
+            self._frame += 1
+            time.sleep(FRAME_DELAY)
+
+    def _final_frame(self, closing):
+        self.progress = 1.0
+
+        lines = []
+        lines.append("")
+        lines.append("")
+
+        # nearly-empty open sieve — coarse residue left on the mesh
+        for m in range(MOUND_HEIGHT):
+            if m == MOUND_HEIGHT - 1:
+                content = [" "] * SIEVE_WIDTH
+                for (start, end, _h) in self._clumps:
+                    if random.random() < 0.5:            # some clumps leave residue
+                        cx = (start + end) // 2
+                        content[cx] = "●"
+                        if cx + 1 < SIEVE_WIDTH and random.random() < 0.5:
+                            content[cx + 1] = "•"
+                lines.append(f"  {' ' * SIEVE_PAD}│{''.join(content)}│")
+            else:
+                lines.append(f"  {' ' * SIEVE_PAD}│{' ' * SIEVE_WIDTH}│")
+
+        lines.append(f"  {self._mesh_row(0)}")
+        lines.append("")
+
+        for r in range(FALL_ROWS):
+            if r == FALL_ROWS - 1:
+                dust = "".join(
+                    random.choice(PARTICLES) if random.random() < 0.08 else " "
+                    for _ in range(WIDTH)
+                )
+                lines.append(f"  {dust}")
+            elif r == FALL_ROWS // 2:
+                lines.append(f"  {closing}")
+            else:
+                lines.append("")
+
+        lines.append(f"  {'▀' * WIDTH}")
+
+        sys.stdout.write("\033[H")
+        for line in lines:
+            sys.stdout.write(f"{line}\033[K\n")
+        sys.stdout.write("\033[J")
+        sys.stdout.flush()
 
 
-def pile_row(progress):
-    if progress < 0.35:
-        char = PILE_CHARS[0]
-    elif progress < 0.7:
-        char = PILE_CHARS[1]
-    else:
-        char = PILE_CHARS[2]
-
-    return char * WIDTH
-
-
-def sieve_animate():
-    total_lines = HEIGHT + 6
-
-    for _ in range(total_lines):
-        print()
-
-    for frame in range(FRAMES):
-        progress = frame / (FRAMES - 1)
-
-        # flurry rises, then fades near the end
-        if progress < 0.7:
-            density = 0.08 + (progress * 0.45)
-        else:
-            density = 0.22 * (1 - progress)
-
-        sys.stdout.write(f"\033[{total_lines}A")
-
-        top, bottom, jitter = sieve_lines(frame)
-        print(f"  {top}\033[K")
-        print(f"  {bottom}\033[K")
-        print("\033[K")
-
-        for row_index in range(HEIGHT):
-            closeness_to_bottom = row_index / HEIGHT
-            row_density = density * closeness_to_bottom
-
-            lag = row_index // 2
-            offset = int(jitter * (1 - lag / HEIGHT))
-
-            print(f"  {particle_row(row_density, offset)}\033[K")
-
-        print(f"  {pile_row(progress)}\033[K")
-        print("\033[K")
-        print("\033[K")
-
-        time.sleep(FRAME_DELAY)
-
-    # final state — sieve centred, no particles, settled bar
-    sys.stdout.write(f"\033[{total_lines}A")
-
-    top, bottom, _ = sieve_lines(FRAMES - 1, final=True)
-    print(f"  {top}\033[K")
-    print(f"  {bottom}\033[K")
-    print("\033[K")
-
-    for _ in range(HEIGHT):
-        print(f"  {' ' * WIDTH}\033[K")
-
-    print(f"  {'▀' * WIDTH}\033[K")
-    print()
-    print("  🫧 sieved · just right")
-    print()
-
+# ------------------------------------------------------------
+# DEMO — run standalone: python src/sieveDemo.py
+# ------------------------------------------------------------
 
 if __name__ == "__main__":
-    sieve_animate()
+    anim = SieveAnimation()
+    anim.start()
+    try:
+        for i in range(6):
+            anim.update("sanitising", i + 1, 6, f"pipeline_{i + 1}")
+            time.sleep(0.6)
+        for i in range(4):
+            anim.update("anonymising", i + 1, 4, f"pass_{i + 1}")
+            time.sleep(0.7)
+        anim.finish()
+    except KeyboardInterrupt:
+        anim.abort()
