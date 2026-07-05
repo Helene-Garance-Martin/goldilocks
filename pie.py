@@ -29,6 +29,7 @@ from commands.audit import audit
 from commands.graph import show_graph
 from commands.stats import stats
 from commands.sieve import sieve
+from commands.inspect_export import inspect_export
 
 
 
@@ -141,6 +142,8 @@ app.command()(audit)
 app.command(name="show-graph")(show_graph)
 
 app.command()(stats)
+
+app.command("inspect-export")(inspect_export)
 
 
 # ------------------------------------------------------------
