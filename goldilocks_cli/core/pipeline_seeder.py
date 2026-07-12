@@ -1,0 +1,335 @@
+# ============================================================
+# 🫧 GOLDILOCKS — Pipeline Seeder
+# ============================================================
+# Reads anonymised pipeline export JSON and seeds Neo4j
+# with real Pipeline nodes, Snap nodes and relationships:
+#   - Pipeline -[:HAS_SNAP]-> Snap
+#   - Snap -[:CONNECTS_TO]-> Snap
+#   - Pipeline -[:CALLS]-> Pipeline (parent/child)
+#
+# Run:
+#   python src/pipeline_seeder.py
+# ============================================================
+
+import os
+import json
+from pathlib import Path
+from neo4j import GraphDatabase
+from goldilocks_cli.core.snap_resolver import resolve_snap_type
+
+
+
+# ------------------------------------------------------------
+# Lambda functions
+# ------------------------------------------------------------
+
+# Extracts date string from SnapLogic's {"$date": "..."} format
+extract_date = lambda d: d.get("$date", "") if isinstance(d, dict) else str(d) if d else ""
+
+
+# ------------------------------------------------------------
+# Neo4j helper functions
+# ------------------------------------------------------------
+
+def verify(driver) -> None:
+    driver.verify_connectivity()
+    print("✅ Connectivity verified")
+
+
+def count_nodes(tx):
+    rec = tx.run("MATCH (n) RETURN count(n) AS total").single()
+    return rec["total"]
+
+def build_snap(pipeline_id: str, snap_id: str, snap: dict) -> dict:
+    """Extract snap data cleanly from raw SnapLogic JSON."""
+    try:
+        label = snap["property_map"]["info"]["label"]["value"]
+    except (KeyError, TypeError):
+        label = snap_id
+
+    class_id  = snap.get("class_id", "unknown")
+    snap_type = resolve_snap_type(class_id)
+
+    try:
+        error = snap["property_map"]["error"]["error_behavior"]["value"]
+    except (KeyError, TypeError):
+        error = "unknown"
+
+    child_pipeline = ""
+    if snap_type == "pipeexec":
+        try:
+            child_pipeline = snap["property_map"]["settings"]["pipeline"]["value"]
+        except (KeyError, TypeError):
+            pass
+
+    return {
+        "id": f"{pipeline_id}:{snap_id}",
+        "label":          label,
+        "type":           snap_type,
+        "class_id":       class_id,
+        "error":          error,
+        "child_pipeline": child_pipeline,
+        "wipes_context":  snap_type in ["httpclient", "script", "sftp_get", "sftp_put", "binarytodocument"],
+    }
+
+# ------------------------------------------------------------
+# Seeder functions
+# ------------------------------------------------------------
+
+def seed_pipeline(tx, pipeline: dict) -> dict | None:
+    """
+    Write transaction — seeds one pipeline into Neo4j:
+    - MERGE Pipeline node
+    - MERGE Snap nodes
+    - MERGE CONNECTS_TO relationships between snaps
+    - MERGE HAS_SNAP relationships from pipeline to snaps
+    """
+
+    pipeline_id   = pipeline["instance_id"]
+    pipeline_name = pipeline["name"]
+    pipeline_path = pipeline.get("path", "")
+
+    # ── Guardrail: skip already seeded pipelines ───────────
+    existing = tx.run(
+        """
+        MATCH (p:Pipeline {id: $id})
+        RETURN p.name AS name
+        """,
+        id=pipeline_id,
+    ).single()
+
+    if existing:
+        print(f"  ⚠️ Already seeded: {existing['name']}")
+        return None
+
+    # ── Pipeline node ──────────────────────────────────────
+    tx.run(
+        """
+        MERGE (p:Pipeline {id: $id})
+        SET p.name    = $name,
+            p.path    = $path,
+            p.created = $created,
+            p.updated = $updated
+        """,
+        id      = pipeline_id,
+        name    = pipeline_name,
+        path    = pipeline_path,
+        created = extract_date(pipeline.get("create_time")),
+        updated = extract_date(pipeline.get("update_time")),
+    )
+
+    print(f"  ✅ Pipeline: {pipeline_name}")
+
+    # ── Snap nodes (from snap_map) ─────────────────────────
+    snap_map = pipeline.get("snap_map", {})
+
+    snaps = [
+        build_snap(pipeline_id, snap_id, snap)
+        for snap_id, snap in snap_map.items()
+    ]
+
+    tx.run(
+        """
+        UNWIND $snaps AS s
+        MERGE (n:Snap {id: s.id})
+        SET n.label          = s.label,
+            n.type           = s.type,
+            n.class_id       = s.class_id,
+            n.error          = s.error,
+            n.child_pipeline = s.child_pipeline,
+            n.wipes_context  = s.wipes_context
+        """,
+        snaps=snaps
+    )
+    print(f"  ✅ Snaps:    {len(snaps)} nodes seeded")
+
+    # ── CONNECTS_TO edges (from link_map) ──────────────────
+    link_map = pipeline.get("link_map", {})
+
+    edges = [
+        {
+            "src": f"{pipeline_id}:{link['src_id']}",
+            "dst": f"{pipeline_id}:{link['dst_id']}",
+            "link_id": link_id,
+        }
+            for link_id, link in link_map.items()
+    ]
+
+
+
+    tx.run(
+        """
+        UNWIND $edges AS e
+        MATCH (a:Snap {id: e.src})
+        MATCH (b:Snap {id: e.dst})
+        MERGE (a)-[:CONNECTS_TO {link_id: e.link_id}]->(b)
+        """,
+        edges=edges
+    )
+    print(f"  ✅ Links:    {len(edges)} edges seeded")
+
+    # ── HAS_SNAP relationships ─────────────────────────────
+    tx.run(
+        """
+        MATCH (p:Pipeline {id: $pid})
+        UNWIND $snap_ids AS sid
+        MATCH (n:Snap {id: sid})
+        MERGE (p)-[:HAS_SNAP]->(n)
+        """,
+        pid      = pipeline_id,
+        snap_ids = [s["id"] for s in snaps]
+    )
+    print(f"  ✅ Pipeline → Snap relationships created")
+
+    return {
+        "pipeline":       pipeline_name,
+        "pipeline_id":    pipeline_id,
+        "snaps":          [s["label"] for s in snaps],
+        "edges": [(e["src"], e["dst"]) for e in edges],
+        "child_pipelines": [s["child_pipeline"] for s in snaps if s["child_pipeline"]],
+    }
+
+def normalise_pipeline_ref(ref: str) -> str:
+    """
+    Convert a Pipeline Execute reference into a likely pipeline name.
+
+    Example:
+    ../shared/SnapLogic Get LastCompleted
+    → SnapLogic Get LastCompleted
+    """
+    return ref.split("/")[-1].strip()
+
+def seed_parent_child_relationships(tx, summaries: list) -> int:
+    """
+    After all pipelines are seeded, create CALLS relationships
+    between parent pipelines and their children.
+
+    A Pipeline Execute snap calling:
+
+        ../shared/SnapLogic Get LastCompleted
+
+    means:
+
+        (ParentPipeline)-[:CALLS]->(SnapLogic Get LastCompleted)
+
+    if the child pipeline exists in the graph.
+    """
+
+    count = 0
+
+    for summary in summaries:
+
+        for child_ref in summary["child_pipelines"]:
+
+            child_name = normalise_pipeline_ref(child_ref)
+
+            result = tx.run(
+                """
+                MATCH (parent:Pipeline {id: $parent_id})
+
+                MATCH (child:Pipeline)
+                WHERE child.name = $child_name
+                   OR child.path ENDS WITH "/" + $child_name
+
+                MERGE (parent)-[:CALLS]->(child)
+
+                RETURN count(*) AS created
+                """,
+                parent_id=summary["pipeline_id"],
+                child_name=child_name,
+            )
+
+            record = result.single()
+            created = record["created"] if record else 0
+
+            if created:
+                count += created
+                print(
+                    f"  ✅ CALLS: "
+                    f"{summary['pipeline']} → {child_name}"
+                )
+            else:
+                print(
+                    f"  ⚪ Unresolved CALLS reference: "
+                    f"{summary['pipeline']} → {child_name}"
+                )
+
+    return count
+
+
+# ------------------------------------------------------------
+# Main
+# ------------------------------------------------------------
+
+def main():
+    # Neo4j credentials from environment
+    uri  = os.environ["NEO4J_URI"]
+    user = os.environ.get("NEO4J_USER", "neo4j")
+    pwd  = os.environ["NEO4J_PASSWORD"]
+
+    # Load anonymised pipeline export
+    export_path = Path(os.getenv("GOLDILOCKS_EXPORT_PATH", "export_anonymised.json"))
+    if not export_path.exists():
+        print(f"❌ File not found: {export_path}")
+        print("   Run: goldilocks anonymise --input export.json first!")
+        return
+
+    print(f"📂 Loading: {export_path}")
+    with open(export_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    # Handle project export (entries[]) or single pipeline
+    pipelines = data.get("entries", [data])
+    print(f"📦 Found {len(pipelines)} pipeline(s) to seed\n")
+
+    with GraphDatabase.driver(uri, auth=(user, pwd)) as driver:
+        verify(driver)
+        print()
+
+        summaries = []
+        skipped_count = 0
+
+        with driver.session() as session:
+
+            # Seed all pipelines and snaps
+            for pipeline in pipelines:
+                print(f"🌱 Seeding: {pipeline.get('name', 'unknown')}")
+                summary = session.execute_write(seed_pipeline, pipeline)
+
+                if summary:
+                    summaries.append(summary)
+                else:
+                    skipped_count += 1
+
+                print()
+
+            # Create parent → child CALLS relationships
+            print("🔗 Creating parent/child pipeline relationships...")
+            session.execute_write(seed_parent_child_relationships, summaries)
+            print()
+
+            total = session.execute_read(count_nodes)
+
+    # Final summary
+    print("=" * 50)
+    print("📊 Seed summary")
+    print(f"🌱 New pipelines: {len(summaries)}")
+    print(f"⚠️  Skipped:       {skipped_count}")
+    print(f"📊 Total nodes in Neo4j: {total}")
+    print()
+
+    if len(summaries) == 0:
+        print("🫧 No new pipelines seeded.")
+        print("Graph unchanged.")
+        print()
+        return
+
+    print("🫧 Goldilocks seeding complete!")
+    print()
+
+    for s in summaries:
+        print(f"  Pipeline: {s['pipeline']}")
+        print(f"  Snaps:    {', '.join(s['snaps'])}")
+        if s["child_pipelines"]:
+            print(f"  Calls:    {', '.join(s['child_pipelines'])}")
+        print()

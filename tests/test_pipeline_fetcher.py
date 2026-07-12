@@ -27,7 +27,7 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from pipeline_fetcher import (
+from goldilocks_cli.core.pipeline_fetcher import (
     is_success,
     is_zip,
     decode_file,
@@ -132,7 +132,7 @@ def make_mock_zip(files: dict) -> bytes:
 class TestFetchAndSave:
     """Integration tests for the full fetch_and_save() function"""
 
-    @patch("pipeline_fetcher.requests.get")
+    @patch("goldilocks_cli.core.pipeline_fetcher.requests.get")
     def test_saves_files_on_success(self, mock_get, tmp_path):
         """Happy path — API returns a valid zip, files get saved"""
 
@@ -161,7 +161,7 @@ class TestFetchAndSave:
         assert (tmp_path / "export.json").exists()
         assert (tmp_path / "accounts_template.json").exists()
 
-    @patch("pipeline_fetcher.requests.get")
+    @patch("goldilocks_cli.core.pipeline_fetcher.requests.get")
     def test_saves_correct_content(self, mock_get, tmp_path):
         """Check the file content is saved correctly, not just the filename"""
 
@@ -187,7 +187,7 @@ class TestFetchAndSave:
         assert '"pipeline"' in saved
         assert "DIESE-Business-Continuity" in saved
 
-    @patch("pipeline_fetcher.requests.get")
+    @patch("goldilocks_cli.core.pipeline_fetcher.requests.get")
     def test_handles_401_gracefully(self, mock_get, tmp_path):
         """Bad credentials — should not save any files"""
 
@@ -208,7 +208,7 @@ class TestFetchAndSave:
         # No files should have been saved
         assert list(tmp_path.iterdir()) == []
 
-    @patch("pipeline_fetcher.requests.get")
+    @patch("goldilocks_cli.core.pipeline_fetcher.requests.get")
     def test_handles_non_zip_response(self, mock_get, tmp_path):
         """API returns JSON instead of zip — should not save any files"""
 

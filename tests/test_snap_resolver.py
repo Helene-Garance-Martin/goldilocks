@@ -6,7 +6,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 import pytest
-from snap_resolver import resolve_snap_type, get_icon, SNAP_ICONS
+from goldilocks_cli.core.snap_resolver import resolve_snap_type, get_icon, SNAP_ICONS
 
 # ------------------------------------------------------------
 # resolve_snap_type tests

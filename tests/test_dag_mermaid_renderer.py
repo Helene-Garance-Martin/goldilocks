@@ -1,3 +1,12 @@
+import os
+import pytest
+
+if not os.environ.get("RUN_INTEGRATION"):
+    pytest.skip(
+        "integration test — needs a live Neo4j (set RUN_INTEGRATION=1 to run)",
+        allow_module_level=True,
+    )
+
 import sys
 import os
 
@@ -6,8 +15,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 from pathlib import Path
 from neo4j import GraphDatabase
 
-from dag_builder import build_dag
-from dag_mermaid_renderer import render_dag_mermaid
+from goldilocks_cli.core.dag_builder import build_dag
+from goldilocks_cli.core.dag_mermaid_renderer import render_dag_mermaid
 
 
 uri = os.environ["NEO4J_URI"]
