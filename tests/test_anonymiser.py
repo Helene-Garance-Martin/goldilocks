@@ -11,7 +11,6 @@
 # SENSITIVE_ORGS to synthetic values (never the gitignored real
 # list). No network, no Neo4j, no LLM calls.
 # ============================================================
-
 import json
 import re
 
@@ -298,8 +297,17 @@ def test_summary_dict_returned(clean_anonymiser, export_file, tmp_path):
     clean = sanitised_file(export_file, tmp_path)
     _, _, summary = run_anonymise(clean_anonymiser, clean, tmp_path)
     assert set(summary) == {"orgs", "urls", "emails", "credentials", "leak_findings", "output"}
-    assert summary["credentials"] >= 2   # password + nested client_secret (api_key was
-                                         # already redacted by the sanitiser upstream)
+    # REGRESSION GUARD (was A6, implicit): this used to assert >= 2 —
+    # but only because sanitise leaked the nested client_secret, so the
+    # anonymiser saw two distinct values ("***REDACTED***" from the
+    # top-level keys, plus NESTED-SECRET-999 in the clear). Now sanitise
+    # redacts at any depth, every secret arrives as the same marker, and
+    # the anonymiser's value-keyed cred lookup dedupes them to one token.
+    # 1 is the sanitiser working. Pinned with == so that a nested secret
+    # escaping again (count → 2) fails loudly instead of passing a >=.
+    # Credential *detection* is covered on unsanitised input by
+    # test_credential_values_replaced_with_random_tokens.
+    assert summary["credentials"] == 1
 
 
 # ------------------------------------------------------------

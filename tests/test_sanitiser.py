@@ -102,16 +102,34 @@ def test_redaction_matches_key_substrings():
     assert out["harmless"] == "z"
 
 
-def test_nested_secrets_NOT_redacted(export_file, tmp_path):
-    # PINS CURRENT BEHAVIOUR — review finding A6 / E-adjacent:
-    # sanitise_settings only inspects top-level keys, so a secret
-    # nested one level down (settings.account_ref.value.client_secret)
-    # survives into export_clean.json. The anonymiser later catches it,
-    # but sanitise is a standalone command whose output can be treated
-    # as "clean". Fix: recurse. Then flip this assertion.
+def test_nested_secrets_redacted(export_file, tmp_path):
+    # REGRESSION GUARD (was A6): sanitise_settings now recurses, so a
+    # secret nested below the top level (settings.account_ref.value.
+    # client_secret) is redacted before it reaches export_clean.json.
+    # sanitise is a standalone command — its output must be safe to
+    # treat as "clean" without waiting for the anonymiser.
     _, clean = run_sanitise(export_file, tmp_path)
     settings = clean["entries"][0]["snap_map"]["snap-active"]["property_map"]["settings"]
-    assert settings["account_ref"]["value"]["client_secret"] == "NESTED-SECRET-999"
+    assert settings["account_ref"]["value"]["client_secret"] == "***REDACTED***"
+    # the wrapper around the secret survives — only the leaf value is replaced
+    assert set(settings["account_ref"]["value"]) == {"client_secret"}
+    # and recursing does not disturb non-sensitive nested values
+    assert settings["expression"]["value"].startswith("Posts to")
+
+
+def test_sensitive_key_redacts_whole_value_whatever_its_shape():
+    # A sensitive key wins over recursion: dict and list values are
+    # replaced wholesale rather than walked into.
+    out = sanitise_settings({
+        "account_ref": {"value": {"client_secret": "s"}},
+        "token": {"value": "t", "expires": 3600},
+        "api_key": ["k1", "k2"],
+        "retries": [{"delay": 1}, {"delay": 2}],
+    })
+    assert out["account_ref"]["value"]["client_secret"] == "***REDACTED***"
+    assert out["token"] == "***REDACTED***"
+    assert out["api_key"] == "***REDACTED***"
+    assert out["retries"] == [{"delay": 1}, {"delay": 2}]
 
 
 def test_info_and_error_blocks_pass_through_unredacted(export_file, tmp_path):

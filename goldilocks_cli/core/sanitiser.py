@@ -81,17 +81,34 @@ is_list     = lambda v: isinstance(v, list) and len(v) > 0
 # SANITISE FUNCTIONS
 # ------------------------------------------------------------
 
-def sanitise_settings(settings: dict) -> dict:
-    """Keep settings structure but redact sensitive values."""
-    if not isinstance(settings, dict):
-        return settings
-    return {
-        k: "***REDACTED***" if any(
-            sensitive in k.lower()
-            for sensitive in SETTINGS_KEYS_TO_STRIP
-        ) else v
-        for k, v in settings.items()
-    }
+def is_sensitive_key(key: str) -> bool:
+    """Return True when a settings key looks like it holds a secret."""
+    lowered = key.lower()
+    return any(
+        sensitive in lowered
+        for sensitive in SETTINGS_KEYS_TO_STRIP
+    )
+
+
+def sanitise_settings(settings):
+    """Keep settings structure but redact sensitive values, at any depth.
+
+    Walks dicts and lists. A key matching is_sensitive_key has its whole
+    value replaced by the redaction marker — whatever shape that value is
+    (string, dict, list) — so a secret can't hide inside a wrapper such as
+    settings.account_ref.value.client_secret. Non-sensitive values are
+    recursed into; leaves are returned untouched.
+    """
+    if isinstance(settings, dict):
+        return {
+            k: "***REDACTED***" if is_sensitive_key(k) else sanitise_settings(v)
+            for k, v in settings.items()
+        }
+
+    if isinstance(settings, list):
+        return [sanitise_settings(item) for item in settings]
+
+    return settings
 
 def is_disabled_snap(snap: dict) -> bool:
     """Return True when a SnapLogic snap is disabled."""
@@ -248,4 +265,3 @@ def sanitise_export(
             print(f"     Snaps (nodes): {snap_count}")
             time.sleep(0.1)
             print(f"     Links (edges): {link_count}")
-
