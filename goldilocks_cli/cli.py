@@ -22,6 +22,7 @@ from goldilocks_cli.commands.visualise import visualise
 from goldilocks_cli.commands.fetch import fetch
 from goldilocks_cli.commands.ask import ask
 from goldilocks_cli.commands.seed import seed
+from goldilocks_cli.commands.check import check
 from goldilocks_cli.commands.sanitise import sanitise
 from goldilocks_cli.commands.anonymise import anonymise
 from goldilocks_cli.commands.audit import audit
@@ -120,6 +121,7 @@ app.command()(fetch)
 app.command()(visualise)
 
 app.command()(sanitise)
+app.command()(check)
 
 app.command()(ping)
 

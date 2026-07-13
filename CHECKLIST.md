@@ -29,6 +29,16 @@
 > removed. Every must-fix item on this list is now ticked. 85 tests green,
 > verified through the installed CLI.
 
+> **2026-07-13 (Fable session):** items 18 + 24 done together. Core
+> sanitiser/anonymiser are silent — facts return as summary dicts,
+> presentation + pacing live in the command wrappers (identical user
+> output; suite dropped 57s → ~3s). Animated sieve now prints the
+> anonymise summary + leak report AFTER the animation, into scrollback.
+> NEW: `goldilocks check <file>` (exit 0/1 leak scan) + pre-seed gate in
+> seed (scan → confirm, default No, --force to skip). Visualiser's
+> prints/input() deliberately deferred to item 20 where its interactive
+> selection is being relocated anyway. 128 tests green.
+
 Ordered so each item is one micro-session (or less). IDs reference REVIEW.md.
 Rule of thumb: everything in **Must fix** blocks the public release; **Nice to fix** can land in 1.0.x.
 
@@ -60,10 +70,15 @@ Rule of thumb: everything in **Must fix** blocks the public release; **Nice to f
 
 - [x] **16. Word-boundary deny-list** in `validate_query` (fixes the `p.created` / `dataset` false positives AND the `CALL{` gap); enforce or delete `FORBIDDEN_PATTERNS` / `ALLOWED_OPERATIONS`; retire `redact_sensitive_value` (S1). Flip the four pinned S1 tests. *(1 session)*
 
+## Journey additions (from later sessions)
+
+- [x] **24. `goldilocks check` + pre-seed leak gate** — done in the same Fable session as 18.
+- [x] **24b. GUID anonymisation** — instance_ids replaced with consistent fake UUIDs (links/keys stay resolvable); leak scan now genuinely quiet on clean output, fixing first-real-run alarm fatigue.
+
 ## Nice to fix (1.0.x territory)
 
 - [ ] **17. Recurse in `sanitise_settings`** so nested secrets are redacted at the sanitise stage too (A6). Flip `test_nested_secrets_NOT_redacted`. *(~20 min)*
-- [ ] **18. Move printing/sleeps out of src functions** — emit via `on_progress`/return values, pace in the command layer (C3). Bonus: the test suite drops from ~42 s to ~2 s. *(1–2 sessions)*
+- [x] **18. Move printing/sleeps out of src functions** — emit via `on_progress`/return values, pace in the command layer (C3). Bonus: the test suite drops from ~42 s to ~2 s. *(1–2 sessions)*
 - [ ] **19. One CLASSDEFS source**, class names matching snap types (`httpclient`, `sftp_get`, `sftp_put`) so those nodes stop rendering unstyled (C4). *(~20 min)*
 - [ ] **20. Delete the dead first `_print_findings`** in audit.py; delete unused `pipelines_typed` in visualiser (or wire the Pydantic layer in); move the `input()` prompt from `generate_diagrams` to the command (C5, C6). *(~30 min)*
 - [ ] **21. `timeout=30` on both `requests.get` calls**; move `os.environ["NEO4J_URI"]` inside the try in `ask_goldilocks`; make `renderer.py` locate `puppeteer-config.json` relative to the package (C6). *(~30 min)*

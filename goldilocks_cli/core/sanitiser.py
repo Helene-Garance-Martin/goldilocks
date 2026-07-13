@@ -5,7 +5,6 @@
 # metadata from pipeline exports — keeping only what
 # Goldilocks needs for parsing, graphing and visualising.
 # ============================================================
-import time
 import json
 from pathlib import Path
 
@@ -179,8 +178,12 @@ def sanitise_export(
     input_path: str,
     output_path: str,
     on_progress: callable = None,
-) -> None:
+) -> dict:
     """Main function — reads, sanitises and writes clean pipeline export.
+
+    Does no printing and no pacing: presentation belongs to the
+    command layer. Facts are emitted via on_progress and the
+    returned summary.
 
     Args:
         input_path:  Path to the raw pipeline export JSON.
@@ -190,6 +193,13 @@ def sanitise_export(
                      can render a progress bar. Signature stable across
                      sanitiser + anonymiser so the same callback shape
                      works for both.
+
+    Returns:
+        A summary dict: output path, original/clean sizes, whether the
+        input was a project export, and per-pipeline snap/link counts.
+
+    Raises:
+        FileNotFoundError: when the input file does not exist.
     """
     input_file  = Path(input_path)
     output_file = Path(output_path)
@@ -197,13 +207,11 @@ def sanitise_export(
     if not input_file.exists():
         raise FileNotFoundError(f"input file not found: {input_path}")
 
-    print(f"📂 Reading: {input_path}")
     with open(input_file, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
     if "entries" in data:
         total = len(data['entries'])
-        print(f"📦 Project export — found {total} pipeline(s)")
 
         if on_progress:
             on_progress("sanitising", 0, total, "starting")
@@ -225,7 +233,6 @@ def sanitise_export(
             "entries":      clean_entries,
         }
     else:
-        print("📄 Single pipeline export")
         if on_progress:
             on_progress("sanitising", 0, 1, "single pipeline")
         clean_data = sanitise_pipeline(data)
@@ -239,29 +246,28 @@ def sanitise_export(
     original_size = input_file.stat().st_size
     clean_size    = output_file.stat().st_size
 
-    print(f"✅ Clean file written to: {output_path}")
-    time.sleep(0.2)
-    print(f"\n📊 Summary:")
-    time.sleep(0.15)
-    print(f"   Original size:  {original_size:,} bytes")
-    time.sleep(0.1)
-    print(f"   Clean size:     {clean_size:,} bytes")
-    time.sleep(0.1)
-
-    if clean_size > original_size:
-        difference = round((clean_size / original_size - 1) * 100)
-        print(f"   Size change:    +{difference}% (settings preserved for graph intelligence)")
-    else:
-        reduction = round((1 - clean_size / original_size) * 100)
-        print(f"   Reduced by:     {reduction}% 🌟")
-
     if "entries" in data:
-        for i, entry in enumerate(clean_data["entries"]):
-            snap_count = len(entry.get("snap_map", {}))
-            link_count = len(entry.get("link_map", {}))
-            time.sleep(0.2)
-            print(f"\n   Pipeline {i+1}: {entry.get('name', 'unknown')}")
-            time.sleep(0.1)
-            print(f"     Snaps (nodes): {snap_count}")
-            time.sleep(0.1)
-            print(f"     Links (edges): {link_count}")
+        pipelines = [
+            {
+                "name":  entry.get("name", "unknown"),
+                "snaps": len(entry.get("snap_map", {})),
+                "links": len(entry.get("link_map", {})),
+            }
+            for entry in clean_data["entries"]
+        ]
+    else:
+        pipelines = [
+            {
+                "name":  clean_data.get("name", "unknown"),
+                "snaps": len(clean_data.get("snap_map", {})),
+                "links": len(clean_data.get("link_map", {})),
+            }
+        ]
+
+    return {
+        "output":        str(output_path),
+        "original_size": original_size,
+        "clean_size":    clean_size,
+        "project":       "entries" in data,
+        "pipelines":     pipelines,
+    }

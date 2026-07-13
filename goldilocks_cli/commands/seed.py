@@ -27,6 +27,11 @@ def seed(
         os.getenv("NEO4J_PASSWORD", ""),
         help="Neo4j password",
     ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help="Skip the pre-seed leak check prompt (automation)",
+    ),
 ):
     """
     🌱 Seed the Neo4j graph with pipeline data.
@@ -51,6 +56,28 @@ def seed(
             "Set it in your environment or pass --password"
         )
         raise typer.Exit(1)
+
+    # ── Pre-seed leak gate ─────────────────────────────────
+    # Seeding is the point of no return into the graph, so the
+    # input gets one last leak scan before any connection is made.
+
+    from pathlib import Path
+    from goldilocks_cli.core.anonymiser import scan_for_leaks, print_leak_report
+
+    input_path = Path(input)
+    if not input_path.exists():
+        typer.echo(f"{RED}❌ File not found: {input}{RESET}")
+        typer.echo("Sieve an export first: goldilocks sieve --input <raw export>")
+        raise typer.Exit(1)
+
+    findings = scan_for_leaks(input_path.read_text(encoding="utf-8"))
+    if findings and not force:
+        print_leak_report(findings)
+        if not typer.confirm("⚠️  Findings above — seed anyway?", default=False):
+            typer.echo("🌱 Seeding cancelled — sieve the file first: goldilocks sieve --input <raw export>\n")
+            raise typer.Exit(1)
+    elif not findings:
+        typer.echo("🔍 pre-seed check: clean")
 
     # ── Display configuration ──────────────────────────────
 

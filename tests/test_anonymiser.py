@@ -223,14 +223,16 @@ def test_nested_credentials_caught_by_recursive_walk(clean_anonymiser, export_fi
 # JSON-decode fallback path
 # ------------------------------------------------------------
 
-def test_fallback_scrubs_orgs_urls_and_emails_in_raw_text(clean_anonymiser, tmp_path, capsys):
+def test_fallback_scrubs_orgs_urls_and_emails_in_raw_text(clean_anonymiser, tmp_path):
     raw = tmp_path / "notjson.txt"
     raw.write_text(
         f"log from {TEST_ORG} at https://x.snaplogic.com/feed/1 by kim@real-place.example {{",
         encoding="utf-8",
     )
     _, text, summary = run_anonymise(clean_anonymiser, raw, tmp_path)
-    assert "falling back to text scrubbing" in capsys.readouterr().out
+    # ITEM 18: the core no longer prints the fallback warning — the
+    # summary carries the flag and the command layer renders it.
+    assert summary["fallback"] is True
     assert TEST_ORG not in text
     assert "snaplogic.com" not in text
     assert "kim@real-place.example" not in text
@@ -296,7 +298,8 @@ def test_runs_are_independent_and_reproducible(clean_anonymiser, export_file, tm
 def test_summary_dict_returned(clean_anonymiser, export_file, tmp_path):
     clean = sanitised_file(export_file, tmp_path)
     _, _, summary = run_anonymise(clean_anonymiser, clean, tmp_path)
-    assert set(summary) == {"orgs", "urls", "emails", "credentials", "leak_findings", "output"}
+    assert set(summary) == {"orgs", "urls", "emails", "credentials", "guids", "leak_findings", "output", "fallback"}
+    assert summary["fallback"] is False
     # REGRESSION GUARD (was A6, implicit): this used to assert >= 2 —
     # but only because sanitise leaked the nested client_secret, so the
     # anonymiser saw two distinct values ("***REDACTED***" from the
@@ -308,6 +311,43 @@ def test_summary_dict_returned(clean_anonymiser, export_file, tmp_path):
     # Credential *detection* is covered on unsanitised input by
     # test_credential_values_replaced_with_random_tokens.
     assert summary["credentials"] == 1
+
+
+# ------------------------------------------------------------
+# GUID replacement
+# ------------------------------------------------------------
+
+def test_guids_replaced_consistently_across_keys_and_values(clean_anonymiser, tmp_path):
+    # SnapLogic instance_ids are GUIDs appearing as snap_map KEYS and
+    # as link src_id/dst_id VALUES — the same GUID must map to the same
+    # fake in both places so links still resolve after anonymisation.
+    guid_a = "05aaa52d-08de-4d99-85fe-5a6ff9053220"
+    guid_b = "27c99541-0448-431b-bec7-1ee5f41e2b89"
+    f = tmp_path / "g.json"
+    f.write_text(json.dumps({
+        "snap_map": {guid_a: {"instance_id": guid_a}, guid_b: {"instance_id": guid_b}},
+        "link_map": {"l1": {"src_id": guid_a, "dst_id": guid_b}},
+    }), encoding="utf-8")
+    _, text, summary = run_anonymise(clean_anonymiser, f, tmp_path)
+    assert guid_a not in text and guid_b not in text
+    assert summary["guids"] == 2
+    data = json.loads(text)
+    # every snap kept key == instance_id (consistent replacement)…
+    assert all(snap["instance_id"] == k for k, snap in data["snap_map"].items())
+    # …and links still resolve to the (now fictional) snap ids
+    assert data["link_map"]["l1"]["src_id"] in data["snap_map"]
+    assert data["link_map"]["l1"]["dst_id"] in data["snap_map"]
+
+
+def test_fake_guids_are_valid_uuid_shape_and_stable_within_run(clean_anonymiser, tmp_path):
+    guid = "9a66871a-3b74-48b0-9c51-d26e9bb6a097"
+    f = tmp_path / "g2.json"
+    f.write_text(json.dumps({"a": guid, "b": f"see {guid} again"}), encoding="utf-8")
+    _, text, _ = run_anonymise(clean_anonymiser, f, tmp_path)
+    data = json.loads(text)
+    fake = data["a"]
+    assert re.fullmatch(r"[0-9a-f]{8}-0000-4000-8000-[0-9a-f]{12}", fake)
+    assert fake in data["b"]
 
 
 # ------------------------------------------------------------
@@ -332,8 +372,21 @@ def test_leak_scan_flags_residual_shapes(clean_anonymiser):
 
 def test_leak_scan_ignores_its_own_fakes(clean_anonymiser):
     from goldilocks_cli.core.anonymiser import scan_for_leaks
-    fakes = "https://api.org-1.com/endpoint-1 and user_1@org-1.example"
+    fakes = (
+        "https://api.org-1.com/endpoint-1 and user_1@org-1.example "
+        "and 00000001-0000-4000-8000-000000000001"
+    )
     assert scan_for_leaks(fakes) == {}
+
+
+def test_anonymised_real_guids_leave_scan_quiet(clean_anonymiser, tmp_path):
+    # the alarm-fatigue fix: structural GUIDs no longer trip the audit
+    f = tmp_path / "g3.json"
+    f.write_text(json.dumps({
+        "instance_id": "ba4934a4-8cc8-4faa-a3da-f8a6d755b47d",
+    }), encoding="utf-8")
+    _, _, summary = run_anonymise(clean_anonymiser, f, tmp_path)
+    assert summary["leak_findings"] == {}
 
 
 # ------------------------------------------------------------

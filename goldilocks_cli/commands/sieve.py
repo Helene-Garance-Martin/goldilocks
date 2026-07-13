@@ -22,13 +22,22 @@ def sieve(
     from goldilocks_cli.core.anonymiser import anonymise_pipeline
 
     if plain:
-        # honest fallback — no animation, plain prints from the modules
+        # honest fallback — no animation; the command renders the facts
         try:
-            sanitise_export(input, sanitised)
-            anonymise_pipeline(sanitised, anonymised)
+            san = sanitise_export(input, sanitised)
+            anon = anonymise_pipeline(sanitised, anonymised)
         except Exception as e:
             typer.echo(f"{RED}❌ Sieve failed: {e}{RESET}\n")
             raise typer.Exit(1)
+        typer.echo(
+            f"🧹 Sanitised {len(san['pipelines'])} pipeline(s) → {san['output']}"
+        )
+        typer.echo(
+            f"🔒 Anonymised — orgs: {anon['orgs']}, urls: {anon['urls']}, "
+            f"emails: {anon['emails']}, credentials: {anon['credentials']}, guids: {anon['guids']}"
+        )
+        from goldilocks_cli.core.anonymiser import print_leak_report
+        print_leak_report(anon["leak_findings"])
         typer.echo(f"{GREEN}🫧 Sieve complete — data ready to seed.{RESET}\n")
         return
 
@@ -39,11 +48,15 @@ def sieve(
 
     try:
         sanitise_export(input, sanitised, on_progress=anim.update)
-        anonymise_pipeline(sanitised, anonymised, on_progress=anim.update)
+        anon = anonymise_pipeline(sanitised, anonymised, on_progress=anim.update)
     except Exception as e:
         anim.abort()  # joins the thread AND restores the terminal
         typer.echo(f"\n{RED}❌ Sieve failed: {e}{RESET}\n")
         raise typer.Exit(1)
 
     anim.finish()
-    typer.echo(f"{GOLD}{BOLD}   data ready to seed — fetch → sieve → seed{RESET}\n")
+    # the summary the alternate screen used to swallow — now it lands
+    # in scrollback where it belongs
+    from goldilocks_cli.commands.anonymise import render_anonymise_summary
+    render_anonymise_summary(anon)
+    typer.echo(f"\n{GOLD}{BOLD}   data ready to seed — fetch → sieve → seed{RESET}\n")

@@ -21,8 +21,8 @@ from goldilocks_cli.core.sanitiser import (
 
 def run_sanitise(export_file, tmp_path, on_progress=None):
     out = tmp_path / "clean.json"
-    sanitise_export(str(export_file), str(out), on_progress=on_progress)
-    return out, json.loads(out.read_text(encoding="utf-8"))
+    summary = sanitise_export(str(export_file), str(out), on_progress=on_progress)
+    return out, json.loads(out.read_text(encoding="utf-8")), summary
 
 
 # ------------------------------------------------------------
@@ -30,27 +30,27 @@ def run_sanitise(export_file, tmp_path, on_progress=None):
 # ------------------------------------------------------------
 
 def test_pipeline_keeps_only_allowed_keys(export_file, tmp_path):
-    _, clean = run_sanitise(export_file, tmp_path)
+    _, clean, _ = run_sanitise(export_file, tmp_path)
     entry = clean["entries"][0]
     assert "render_map" not in entry
     assert {"name", "instance_id", "snap_map", "link_map"} <= set(entry)
 
 
 def test_snap_keeps_only_allowed_keys(export_file, tmp_path):
-    _, clean = run_sanitise(export_file, tmp_path)
+    _, clean, _ = run_sanitise(export_file, tmp_path)
     snap = clean["entries"][0]["snap_map"]["snap-active"]
     assert "render_details" not in snap
     assert set(snap) <= {"class_id", "instance_id", "property_map"}
 
 
 def test_link_keeps_only_src_dst_views(export_file, tmp_path):
-    _, clean = run_sanitise(export_file, tmp_path)
+    _, clean, _ = run_sanitise(export_file, tmp_path)
     link = clean["entries"][0]["link_map"]["link-live"]
     assert set(link) <= {"src_id", "dst_id", "src_view_id", "dst_view_id"}
 
 
 def test_project_wrapper_preserved(export_file, tmp_path):
-    _, clean = run_sanitise(export_file, tmp_path)
+    _, clean, _ = run_sanitise(export_file, tmp_path)
     assert clean["project_name"] == "Acme Integration"
     assert len(clean["entries"]) == 2
 
@@ -60,7 +60,7 @@ def test_project_wrapper_preserved(export_file, tmp_path):
 # ------------------------------------------------------------
 
 def test_disabled_snap_removed(export_file, tmp_path):
-    _, clean = run_sanitise(export_file, tmp_path)
+    _, clean, _ = run_sanitise(export_file, tmp_path)
     snap_map = clean["entries"][0]["snap_map"]
     assert "snap-disabled" not in snap_map
     assert "snap-active" in snap_map
@@ -68,7 +68,7 @@ def test_disabled_snap_removed(export_file, tmp_path):
 
 
 def test_orphan_link_removed_with_disabled_snap(export_file, tmp_path):
-    _, clean = run_sanitise(export_file, tmp_path)
+    _, clean, _ = run_sanitise(export_file, tmp_path)
     link_map = clean["entries"][0]["link_map"]
     assert "link-orphan" not in link_map
     assert "link-live" in link_map
@@ -88,7 +88,7 @@ def test_is_disabled_snap_detection():
 # ------------------------------------------------------------
 
 def test_top_level_sensitive_settings_redacted(export_file, tmp_path):
-    _, clean = run_sanitise(export_file, tmp_path)
+    _, clean, _ = run_sanitise(export_file, tmp_path)
     settings = clean["entries"][0]["snap_map"]["snap-active"]["property_map"]["settings"]
     assert settings["password"] == "***REDACTED***"
     assert settings["api_key"] == "***REDACTED***"
@@ -108,7 +108,7 @@ def test_nested_secrets_redacted(export_file, tmp_path):
     # client_secret) is redacted before it reaches export_clean.json.
     # sanitise is a standalone command — its output must be safe to
     # treat as "clean" without waiting for the anonymiser.
-    _, clean = run_sanitise(export_file, tmp_path)
+    _, clean, _ = run_sanitise(export_file, tmp_path)
     settings = clean["entries"][0]["snap_map"]["snap-active"]["property_map"]["settings"]
     assert settings["account_ref"]["value"]["client_secret"] == "***REDACTED***"
     # the wrapper around the secret survives — only the leaf value is replaced
@@ -138,7 +138,7 @@ def test_info_and_error_blocks_pass_through_unredacted(export_file, tmp_path):
     # tenant IDs). Sanitiser intentionally keeps these blocks, but
     # nothing downstream scrubs free text inside them except known
     # org-name strings.
-    _, clean = run_sanitise(export_file, tmp_path)
+    _, clean, _ = run_sanitise(export_file, tmp_path)
     pm = clean["entries"][0]["snap_map"]["snap-active"]["property_map"]
     assert "zoe@acme-corp.example" in pm["info"]["notes"]["value"]
     assert "tenant-guid-123" in pm["error"]["err_msg"]["value"]
@@ -148,31 +148,49 @@ def test_info_and_error_blocks_pass_through_unredacted(export_file, tmp_path):
 # Size summary logic
 # ------------------------------------------------------------
 
-def test_size_summary_reports_growth_when_clean_is_larger(export_file, tmp_path, capsys):
-    # indent=2 output of an already-lean input grows → "+N%" branch
-    run_sanitise(export_file, tmp_path)
-    out = capsys.readouterr().out
-    assert "Size change:" in out or "Reduced by:" in out
-    assert "📊 Summary:" in out
+def test_summary_reports_sizes(export_file, tmp_path):
+    # ITEM 18: the core no longer prints — it returns the facts.
+    _, _, summary = run_sanitise(export_file, tmp_path)
+    assert summary["original_size"] > 0
+    assert summary["clean_size"] > 0
+    assert summary["project"] is True
+    assert summary["output"].endswith("clean.json")
 
 
-def test_size_summary_reports_reduction_for_noisy_input(tmp_path, capsys, synthetic_export):
+def test_summary_reports_reduction_for_noisy_input(tmp_path, synthetic_export):
     # Fatten the raw export with UI noise so the clean file is smaller
     synthetic_export["entries"][0]["render_map"] = {"blob": "x" * 20000}
     raw = tmp_path / "noisy.json"
     raw.write_text(json.dumps(synthetic_export), encoding="utf-8")
     out = tmp_path / "clean.json"
-    sanitise_export(str(raw), str(out))
-    printed = capsys.readouterr().out
-    assert "Reduced by:" in printed
+    summary = sanitise_export(str(raw), str(out))
+    assert summary["clean_size"] < summary["original_size"]
 
 
-def test_per_pipeline_counts_printed(export_file, tmp_path, capsys):
-    run_sanitise(export_file, tmp_path)
-    out = capsys.readouterr().out
-    assert "Pipeline 1: Acme Leavers Sync" in out
-    assert "Snaps (nodes): 2" in out   # disabled snap already removed
-    assert "Links (edges): 1" in out   # orphan link already removed
+def test_summary_reports_per_pipeline_counts(export_file, tmp_path):
+    _, _, summary = run_sanitise(export_file, tmp_path)
+    assert summary["pipelines"] == [
+        {"name": "Acme Leavers Sync", "snaps": 2, "links": 1},  # disabled snap + orphan link removed
+        {"name": "acme Heartbeat", "snaps": 1, "links": 0},
+    ]
+
+
+def test_cli_renders_summary(export_file, tmp_path):
+    # ITEM 18: presentation lives in the command layer — one CLI-level
+    # test pins the rendering the core tests no longer cover.
+    import typer
+    from typer.testing import CliRunner
+    from goldilocks_cli.commands.sanitise import sanitise
+
+    app = typer.Typer()
+    app.command()(sanitise)
+    result = CliRunner().invoke(
+        app, ["--input", str(export_file), "--output", str(tmp_path / "c.json")]
+    )
+    assert result.exit_code == 0
+    assert "📊 Summary:" in result.output
+    assert "Pipeline 1: Acme Leavers Sync" in result.output
+    assert "Snaps (nodes): 2" in result.output
 
 
 # ------------------------------------------------------------

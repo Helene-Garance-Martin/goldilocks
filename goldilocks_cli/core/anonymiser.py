@@ -11,6 +11,7 @@ Replaces:
   - URLs (http/https/sftp/ftp)    → https://api.org-1.com/endpoint-1 ...
   - Email addresses               → user_1@org-1.example ...
   - Credential values             → token_9f2a1c4e ... (random per run)
+  - GUIDs (instance ids etc.)     → 00000001-0000-4000-8000-000000000001 ...
 
 Design notes (v1.0 rework):
   - No module-level state: every call to anonymise_pipeline()
@@ -32,7 +33,6 @@ Design notes (v1.0 rework):
     output is leak-scanned after writing and the summary says
     "review before sharing", not "safe".
 """
-import time
 import json
 import re
 import secrets
@@ -122,6 +122,11 @@ is_credential_key = lambda key: any(
 is_fake_url   = lambda url: url.startswith("https://api.org-")
 is_fake_email = lambda addr: bool(re.fullmatch(r"user_\d+@org-\d+\.example", addr))
 
+# fake GUIDs are valid UUID-shaped but visibly synthetic: counter in the
+# first and last groups, fixed 0000-4000-8000 core (v4-plausible shape)
+make_fake_guid = lambda n: f"{n:08x}-0000-4000-8000-{n:012x}"
+is_fake_guid   = lambda g: bool(re.fullmatch(r"[0-9a-f]{8}-0000-4000-8000-[0-9a-f]{12}", g))
+
 
 # ---------------------------------------------------------------------------
 # LOOKUPS — one fresh set per anonymise_pipeline() call
@@ -129,7 +134,7 @@ is_fake_email = lambda addr: bool(re.fullmatch(r"user_\d+@org-\d+\.example", add
 
 def new_lookups() -> dict:
     """Fresh replacement tables — nothing survives between runs."""
-    return {"orgs": {}, "urls": {}, "emails": {}, "creds": {}}
+    return {"orgs": {}, "urls": {}, "emails": {}, "creds": {}, "guids": {}}
 
 
 # ---------------------------------------------------------------------------
@@ -197,6 +202,27 @@ def anonymise_emails(text: str, email_lookup: dict) -> str:
     return EMAIL_PATTERN.sub(replace, text)
 
 
+def anonymise_guids(text: str, guid_lookup: dict) -> str:
+    """Replace every GUID with a fake, consistent one.
+
+    SnapLogic instance_ids are GUIDs and appear both as JSON keys
+    (snap_map) and as values (link src_id/dst_id, pipeline ids) —
+    the text pass replaces them consistently, so links still resolve
+    and the seeded graph keeps its integrity, just with fictional
+    identifiers untraceable to the source tenant.
+    """
+    def replace(match):
+        guid = match.group(0)
+        if is_fake_guid(guid):
+            return guid
+        key = guid.lower()
+        if key not in guid_lookup:
+            guid_lookup[key] = make_fake_guid(len(guid_lookup) + 1)
+        return guid_lookup[key]
+
+    return GUID_PATTERN.sub(replace, text)
+
+
 def anonymise_credentials(obj, cred_lookup: dict):
     """Walk the pipeline JSON recursively and replace credential values.
 
@@ -225,10 +251,11 @@ def _fake_cred(value: str, cred_lookup: dict) -> str:
 
 def anonymise_text(text: str, lookups: dict, orgs: list[str] | None = None) -> str:
     """The full text pass, in leak-safe order:
-    URLs first (org names inside URLs vanish with the URL),
-    then emails, then org names."""
+    URLs first (org names and GUIDs inside URLs vanish with the URL),
+    then emails, then GUIDs, then org names."""
     text = anonymise_urls(text, lookups["urls"])
     text = anonymise_emails(text, lookups["emails"])
+    text = anonymise_guids(text, lookups["guids"])
     text = anonymise_org_names(text, lookups["orgs"], orgs)
     return text
 
@@ -254,7 +281,7 @@ def scan_for_leaks(text: str) -> dict:
     if emails:
         findings["emails"] = sorted(set(emails))[:10]
 
-    guids = GUID_PATTERN.findall(text)
+    guids = [g for g in GUID_PATTERN.findall(text) if not is_fake_guid(g)]
     if guids:
         findings["guids"] = sorted(set(guids))[:10]
 
@@ -307,27 +334,24 @@ def anonymise_pipeline(
     if not input_file.exists():
         raise FileNotFoundError(f"input file not found: {input_path}")
 
-    print(f"🔍  Reading: {input_path}")
-
     lookups = new_lookups()
 
     try:
         pipeline_json = json.loads(input_file.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
-        print("⚠️   Not valid JSON — falling back to text scrubbing.")
-        print("    (Credential values cannot be detected without JSON keys.)")
+        # Not valid JSON — fall back to text scrubbing. Without JSON
+        # keys, credential values cannot be detected; the command
+        # layer warns the user (summary carries fallback=True).
         raw = input_file.read_text(encoding="utf-8")
         raw = anonymise_text(raw, lookups)
         output_file.write_text(raw, encoding="utf-8")
         findings = scan_for_leaks(raw)
-        print_leak_report(findings)
-        return _summary(lookups, findings, output_path)
+        return _summary(lookups, findings, output_path, fallback=True)
 
     if on_progress:
         on_progress("anonymising", 0, 2, "starting")
 
     # ── Phase 1: credential values (recursive walk over keys) ────────
-    print("🔑  Anonymising credentials...")
     pipeline_json = anonymise_credentials(pipeline_json, lookups["creds"])
     if on_progress:
         on_progress("anonymising", 1, 2, "credentials")
@@ -335,7 +359,6 @@ def anonymise_pipeline(
     # ── Phase 2: URLs, emails, org names (text pass) ─────────────────
     # ensure_ascii=False so accented names ("Hélène") appear as
     # themselves in the text, not as \u escapes the patterns miss.
-    print("🏢  Anonymising organisations, URLs and emails...")
     clean = json.dumps(pipeline_json, indent=2, ensure_ascii=False)
     clean = anonymise_text(clean, lookups)
     if on_progress:
@@ -343,33 +366,18 @@ def anonymise_pipeline(
 
     output_file.write_text(clean, encoding="utf-8")
 
-    print(f"✅  Anonymised file written to: {output_path}")
-    time.sleep(0.2)
-    print(f"\n📊  Summary:")
-    time.sleep(0.15)
-    print(f"    Orgs replaced:        {len(lookups['orgs'])}")
-    time.sleep(0.1)
-    print(f"    URLs replaced:        {len(lookups['urls'])}")
-    time.sleep(0.1)
-    print(f"    Emails replaced:      {len(lookups['emails'])}")
-    time.sleep(0.1)
-    print(f"    Credentials replaced: {len(lookups['creds'])}")
-    time.sleep(0.1)
-
     findings = scan_for_leaks(clean)
-    print_leak_report(findings)
-    print("    Automated scrubbing catches known patterns only —")
-    print("    give the file ten adversarial minutes before sharing.")
-
-    return _summary(lookups, findings, output_path)
+    return _summary(lookups, findings, output_path, fallback=False)
 
 
-def _summary(lookups: dict, findings: dict, output_path: str) -> dict:
+def _summary(lookups: dict, findings: dict, output_path: str, fallback: bool) -> dict:
     return {
         "orgs":        len(lookups["orgs"]),
         "urls":        len(lookups["urls"]),
         "emails":      len(lookups["emails"]),
         "credentials": len(lookups["creds"]),
+        "guids":       len(lookups["guids"]),
         "leak_findings": findings,
         "output": str(output_path),
+        "fallback": fallback,
     }

@@ -62,6 +62,7 @@ def test_plain_sieve_chains_sanitise_then_anonymise(export_file, tmp_path, clean
     assert TEST_ORG not in final_text
     assert "ORG_1" in final_text
     assert "Sieve complete" in result.output
+    assert "Post-scrub audit" in result.output  # item 18: report rendered by the command
 
 
 def test_plain_sieve_missing_input_fails_honestly(tmp_path, clean_anonymiser):
