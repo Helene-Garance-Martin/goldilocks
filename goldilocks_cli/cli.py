@@ -30,6 +30,7 @@ from goldilocks_cli.commands.graph import show_graph
 from goldilocks_cli.commands.stats import stats
 from goldilocks_cli.commands.sieve import sieve
 from goldilocks_cli.commands.inspect_export import inspect_export
+from goldilocks_cli.commands.init import init
 
 
 
@@ -115,7 +116,7 @@ def main(ctx: typer.Context):
         typer.echo(
             "  Run 'goldilocks welcome' to begin, or 'goldilocks --help' to see available commands.\n"
         )
-
+app.command()(init)
 app.command()(fetch)
 
 app.command()(visualise)

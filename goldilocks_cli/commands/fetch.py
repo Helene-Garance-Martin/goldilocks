@@ -4,19 +4,30 @@ import zipfile
 import requests
 import typer
 from pathlib import Path
+from typing import Optional
 from requests.auth import HTTPBasicAuth
 from rich.console import Console
 from goldilocks_cli.colours import CYAN, GREEN, RED, GOLD, RESET
+from goldilocks_cli.core.config import load_config
 
 console = Console()
 
-def fetch():
+def fetch(
+    url: Optional[str] = typer.Option(
+        None,
+        "--url",
+        help="SnapLogic project URL. Overrides the configured one.",
+    ),
+):
     """
     🌐 Fetch pipeline exports from SnapLogic
     """
     from goldilocks_cli.core.snaplogic_url import parse_snaplogic_url
 
-    url = typer.prompt("🫧 Paste your SnapLogic URL")
+    config = load_config()
+
+    # --url wins, then the configured URL, then ask.
+    url = url or config["snaplogic"]["url"] or typer.prompt("🫧 Paste your SnapLogic URL")
 
     try:
         parsed = parse_snaplogic_url(url)
@@ -41,7 +52,7 @@ def fetch():
             .lower()
         )
 
-        output_dir = Path("pipeline_exports") / project_slug
+        output_dir = Path(config["paths"]["exports_dir"]) / project_slug
         zip_path   = output_dir / "export.zip"
         output_dir.mkdir(parents=True, exist_ok=True)
 
