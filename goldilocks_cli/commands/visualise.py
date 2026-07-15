@@ -1,11 +1,11 @@
 # commands/visualise.py
-import os
 from pathlib import Path
 
 import typer
 from goldilocks_cli.colours import CYAN, GREEN, RED, GOLD, RESET
 
 from goldilocks_cli.core.pipeline_menu import pipeline_menu
+from goldilocks_cli.core.credentials import CredentialMissing
 
 from goldilocks_cli.core.output_manager import (
     open_rendered_file,
@@ -91,6 +91,10 @@ def visualise(
             _render_from_json(input, str(out), direction, fmt, pipeline)
             return
 
+    except CredentialMissing as e:
+        typer.echo(f"{RED}{e}{RESET}\n")
+        raise typer.Exit(1)
+
     except Exception as e:
         typer.echo(f"{RED}❌ Failed to generate diagram: {e}{RESET}\n")
         raise typer.Exit(1)
@@ -126,9 +130,13 @@ def _render_from_traversal(
     from goldilocks_cli.core.dag_mermaid_renderer import render_dag_mermaid
     from goldilocks_cli.core.renderer import render_diagram
 
-    uri = os.environ["NEO4J_URI"]
-    user = os.environ.get("NEO4J_USER", "neo4j")
-    password = os.environ["NEO4J_PASSWORD"]
+    from goldilocks_cli.core.credentials import (
+        require_credential, get_credential, NEO4J_DEFAULT_USER,
+    )
+
+    uri = require_credential("NEO4J_URI", "traverse the graph")
+    user = get_credential("NEO4J_USER") or NEO4J_DEFAULT_USER
+    password = require_credential("NEO4J_PASSWORD", "traverse the graph")
 
     with GraphDatabase.driver(uri, auth=(user, password)) as driver:
         with driver.session() as session:

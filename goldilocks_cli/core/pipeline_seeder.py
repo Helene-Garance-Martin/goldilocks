@@ -262,10 +262,14 @@ def seed_parent_child_relationships(tx, summaries: list) -> int:
 # ------------------------------------------------------------
 
 def main():
-    # Neo4j credentials from environment
-    uri  = os.environ["NEO4J_URI"]
-    user = os.environ.get("NEO4J_USER", "neo4j")
-    pwd  = os.environ["NEO4J_PASSWORD"]
+    # Neo4j credentials — via the central credentials module
+    from goldilocks_cli.core.credentials import (
+        require_credential, get_credential, NEO4J_DEFAULT_USER,
+    )
+
+    uri  = require_credential("NEO4J_URI", "seed the graph")
+    user = get_credential("NEO4J_USER") or NEO4J_DEFAULT_USER
+    pwd  = require_credential("NEO4J_PASSWORD", "seed the graph")
 
     # Load anonymised pipeline export
     export_path = Path(os.getenv("GOLDILOCKS_EXPORT_PATH", "export_anonymised.json"))

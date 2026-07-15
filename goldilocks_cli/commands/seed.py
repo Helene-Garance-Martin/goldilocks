@@ -16,16 +16,16 @@ def seed(
         help="Path to anonymised pipeline JSON",
     ),
     uri: str = typer.Option(
-        os.getenv("NEO4J_URI", ""),
-        help="Neo4j Aura URI",
+        None,
+        help="Neo4j Aura URI (defaults to NEO4J_URI)",
     ),
     username: str = typer.Option(
-        os.getenv("NEO4J_USER", "neo4j"),
-        help="Neo4j username",
+        None,
+        help="Neo4j username (defaults to NEO4J_USER)",
     ),
     password: str = typer.Option(
-        os.getenv("NEO4J_PASSWORD", ""),
-        help="Neo4j password",
+        None,
+        help="Neo4j password (defaults to NEO4J_PASSWORD)",
     ),
     force: bool = typer.Option(
         False,
@@ -37,24 +37,22 @@ def seed(
     🌱 Seed the Neo4j graph with pipeline data.
     """
 
-    # ── Validation ─────────────────────────────────────────
+    # ── Credentials — flags win, else the central module ──
+    from goldilocks_cli.core.credentials import (
+        require_credential, get_credential,
+        NEO4J_DEFAULT_USER, CredentialMissing,
+    )
 
-    if not uri:
-        typer.echo(
-            f"{RED}❌ NEO4J_URI not configured.{RESET}"
+    try:
+        uri = uri or require_credential("NEO4J_URI", "seed the graph")
+        username = (
+            username or get_credential("NEO4J_USER") or NEO4J_DEFAULT_USER
         )
-        typer.echo(
-            "Set it in your environment or pass --uri"
+        password = (
+            password or require_credential("NEO4J_PASSWORD", "seed the graph")
         )
-        raise typer.Exit(1)
-
-    if not password:
-        typer.echo(
-            f"{RED}❌ NEO4J_PASSWORD not configured.{RESET}"
-        )
-        typer.echo(
-            "Set it in your environment or pass --password"
-        )
+    except CredentialMissing as e:
+        typer.echo(f"{RED}{e}{RESET}")
         raise typer.Exit(1)
 
     # ── Pre-seed leak gate ─────────────────────────────────
@@ -90,6 +88,8 @@ def seed(
 
         import sys
 
+        # Hand flag overrides to pipeline_seeder via the environment —
+        # env is the source of truth, so this is the sanctioned channel.
         os.environ["NEO4J_URI"] = uri
         os.environ["NEO4J_USER"] = username
         os.environ["NEO4J_PASSWORD"] = password

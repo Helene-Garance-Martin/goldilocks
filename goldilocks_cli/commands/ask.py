@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Optional
 from rich.console import Console
 from goldilocks_cli.colours import CYAN, GREEN, RED, GOLD, RESET
+from goldilocks_cli.core.credentials import CredentialMissing
 
 console = Console()
 
@@ -49,6 +50,10 @@ def ask(
 
         typer.echo(answer)
         typer.echo("")
+
+    except CredentialMissing as e:
+        typer.echo(f"{RED}{e}{RESET}\n")
+        raise typer.Exit(1)
 
     except Exception as e:
         typer.echo(f"{RED}❌ Failed to answer question: {e}{RESET}\n")

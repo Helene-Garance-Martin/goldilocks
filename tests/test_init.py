@@ -113,7 +113,7 @@ def test_init_writes_config_from_answers(sandbox):
 
     config = config_module.load_config()
     assert config["snaplogic"]["url"] == "https://elastic.example.com/sl/proj"
-    assert "next: goldilocks fetch" in result.stdout
+    assert "next: goldilocks doctor" in result.stdout  # doctor verifies before fetch
 
 
 def test_init_scaffolds_sensitive_orgs_template(sandbox):
@@ -182,12 +182,13 @@ def test_init_warns_when_gitignore_misses_sensitive_orgs(sandbox):
 
     assert "Not in .gitignore" in result.stdout
     assert "sensitive_orgs.txt" in result.stdout
+    assert ".env" in result.stdout  # credentials joined the check
 
 
 def test_init_is_happy_when_gitignore_covers_secrets(sandbox):
     (sandbox["work"] / ".git").mkdir()
     (sandbox["work"] / ".gitignore").write_text(
-        "sensitive_orgs.txt\ngoldilocks.toml\n", encoding="utf-8"
+        "sensitive_orgs.txt\ngoldilocks.toml\n.env\n", encoding="utf-8"
     )
 
     result = runner.invoke(app, ["init", "--local"], input="https://x.example.com/p\n\n\n")
