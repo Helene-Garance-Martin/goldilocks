@@ -1,5 +1,4 @@
 # commands/fetch.py
-import os
 import zipfile
 import requests
 import typer
@@ -38,8 +37,21 @@ def fetch(
         typer.echo(f"Export:  {parsed['export_url']}")
         typer.echo("")
 
-        username = os.getenv("SNAPLOGIC_USERNAME") or typer.prompt("SnapLogic username")
-        password = os.getenv("SNAPLOGIC_PASSWORD") or typer.prompt(
+        # Secrets flow only through core.credentials. Prefer .env:
+        # prompted values vanish with the process. The password
+        # prompt stays hidden (hide_input=True) as a fallback only.
+        from goldilocks_cli.core.credentials import get_credential
+
+        username = get_credential("SNAPLOGIC_USERNAME")
+        password = get_credential("SNAPLOGIC_PASSWORD")
+        if username is None or password is None:
+            typer.echo(
+                f"{GOLD}🔑 Tip: add SNAPLOGIC_USERNAME and SNAPLOGIC_PASSWORD "
+                f"to your .env and Goldilocks will stop asking. "
+                f"goldilocks doctor verifies the pod.{RESET}"
+            )
+        username = username or typer.prompt("SnapLogic username")
+        password = password or typer.prompt(
             "SnapLogic password",
             hide_input=True,
         )

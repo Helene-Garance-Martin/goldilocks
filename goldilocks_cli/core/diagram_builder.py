@@ -11,7 +11,37 @@ import re
 
 from goldilocks_cli.core.snap_resolver import resolve_snap_type, get_icon
 from goldilocks_cli.core.mermaid_styles import NODE_SHAPES as SNAP_SHAPES, CLASSDEFS
+from goldilocks_cli.core.dag_models import DAGModel
+from goldilocks_cli.core.dag_transform import collapse_linear_chains
+from goldilocks_cli.core.visualisation_scale import COLLAPSE_MIN_CHAIN
+from goldilocks_cli.core.dag_mermaid_renderer import build_mermaid_frontmatter
 
+
+
+
+def prepare_dag_view(
+    dag: DAGModel,
+    *,
+    collapse: bool,
+    min_length: int = COLLAPSE_MIN_CHAIN,
+) -> DAGModel:
+    """Select a full or collapsed DAG view without mutating the source."""
+    if collapse:
+        return collapse_linear_chains(dag, min_length=min_length)
+    return dag.model_copy(deep=True)
+
+
+def prepare_project_views(
+    dags: list[DAGModel],
+    *,
+    collapse: bool,
+    min_length: int = COLLAPSE_MIN_CHAIN,
+) -> list[DAGModel]:
+    """Prepare each pipeline DAG for a project-level Mermaid view."""
+    return [
+        prepare_dag_view(dag, collapse=collapse, min_length=min_length)
+        for dag in dags
+    ]
 
 # ------------------------------------------------------------
 # HELPERS
@@ -97,14 +127,7 @@ def build_pipeline_diagram(
 
     lines = []
 
-    lines.append(
-        "%%{init: {'theme': 'base', "
-        "'flowchart': {'nodeSpacing': 50, "
-        "'rankSpacing': 80, 'padding': 16}, "
-        "'themeVariables': {"
-        "'clusterBkg': '#FAFAFA', "
-        "'clusterBorder': '#CCCCCC'}}}%%"
-    )
+    lines.append(build_mermaid_frontmatter("Goldilocks Combined"))
 
     # IMPORTANT:
     # Only one top-level flowchart declaration.

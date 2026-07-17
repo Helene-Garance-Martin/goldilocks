@@ -2,8 +2,16 @@
 # ============================================================
 # 🫧 GOLDILOCKS — init
 # ============================================================
-# One-time (and re-runnable) setup. Writes a config file so
-# `fetch` stops asking you to paste the same URL every time.
+# One-time (and re-runnable) setup, in two acts:
+#   1. Config questions — writes goldilocks.toml so `fetch`
+#      stops asking you to paste the same URL every time.
+#   2. Credentials — reports what's set, scaffolds a .env with
+#      commented placeholders for what isn't, and folds .env
+#      into the .gitignore check below.
+#
+# init NEVER accepts a secret value — no prompts for passwords
+# or keys, visible or hidden. You fill the .env in your editor;
+# init explains, doctor verifies.
 # ============================================================
 
 from pathlib import Path
@@ -49,6 +57,85 @@ def _gitignore_covers(git_root: Path, filename: str) -> bool:
         if line.lstrip("/") in (name, filename) or line in (f"*{Path(name).suffix}",):
             return True
     return False
+
+
+# ------------------------------------------------------------
+# Credential helpers — act two of init
+# ------------------------------------------------------------
+
+# Placeholder lines for the .env scaffold — comments only,
+# never values. Grouped by service, matching doctor's report.
+ENV_TEMPLATE_LINES: dict[str, list[str]] = {
+    "NEO4J_URI": [
+        "# Neo4j — used by seed / ask / visualise / show-graph / audit / stats / ping",
+        "# NEO4J_URI=neo4j+s://xxxxxxxx.databases.neo4j.io",
+    ],
+    "NEO4J_PASSWORD": [
+        "# NEO4J_USER=neo4j            # optional, defaults to neo4j",
+        "# NEO4J_PASSWORD=",
+    ],
+    "SNAPLOGIC_USERNAME": [
+        "",
+        "# SnapLogic — used by fetch (HTTP basic auth against the pod)",
+        "# SNAPLOGIC_USERNAME=",
+    ],
+    "SNAPLOGIC_PASSWORD": [
+        "# SNAPLOGIC_PASSWORD=",
+    ],
+    "ANTHROPIC_API_KEY": [
+        "",
+        "# Anthropic — used by ask (the graph agent)",
+        "# ANTHROPIC_API_KEY=",
+    ],
+}
+
+ENV_HEADER = [
+    "# 🫧 Goldilocks credentials — fill in and keep OUT of git.",
+    "# Real environment variables always win over this file.",
+    "",
+]
+
+
+def _report_credentials() -> None:
+    """Echo present / not-set per credential. Informational only —
+    the live verification is doctor's job."""
+    from goldilocks_cli.core.credentials import (
+        KNOWN_CREDENTIALS, get_credential,
+    )
+
+    typer.echo(f"{CYAN}   Credentials (init explains, doctor verifies):{RESET}")
+    for name, meta in KNOWN_CREDENTIALS.items():
+        if get_credential(name) is not None:
+            typer.echo(f"{GREEN}     ✅ {meta['label']} ({name}) — present{RESET}")
+        else:
+            typer.echo(f"{YELLOW}     ◻️  {meta['label']} ({name}) — not set{RESET}")
+
+
+def _scaffold_env(env_path: Path) -> bool:
+    """Ensure .env exists and mentions every known credential —
+    commented placeholders only, idempotent, never destructive.
+    Returns True when the file was created or extended."""
+    from goldilocks_cli.core.credentials import KNOWN_CREDENTIALS
+
+    if env_path.exists():
+        existing = env_path.read_text(encoding="utf-8")
+        additions: list[str] = []
+        for name in KNOWN_CREDENTIALS:
+            if name not in existing:
+                additions.extend(ENV_TEMPLATE_LINES.get(name, [f"# {name}="]))
+        if not additions:
+            return False
+        env_path.write_text(
+            existing.rstrip("\n") + "\n\n" + "\n".join(additions) + "\n",
+            encoding="utf-8",
+        )
+        return True
+
+    lines = list(ENV_HEADER)
+    for name in KNOWN_CREDENTIALS:
+        lines.extend(ENV_TEMPLATE_LINES.get(name, [f"# {name}="]))
+    env_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return True
 
 
 # ------------------------------------------------------------
@@ -100,6 +187,11 @@ def init(
             "sensitive_orgs": sensitive_orgs,
             "exports_dir": exports_dir,
         },
+        # Item 26 adds workflow state without adding another setup prompt.
+        # Preserve a user's configured threshold on every re-run.
+        "workflow": {
+            "stale_after_days": current["workflow"]["stale_after_days"],
+        },
     }
 
     save_config(config, target)
@@ -116,12 +208,23 @@ def init(
     else:
         typer.echo(f"{GOLD}   Kept existing: {orgs_path}{RESET}")
 
+    # --- Credentials (act two) -------------------------------------------
+    typer.echo("")
+    _report_credentials()
+
+    env_path = cwd / ".env"
+    if _scaffold_env(env_path):
+        typer.echo(f"{GREEN}✅ .env placeholders ready: {env_path}{RESET}")
+        typer.echo(f"{GOLD}   Fill in your values there — goldilocks doctor verifies them.{RESET}")
+    else:
+        typer.echo(f"{GOLD}   Kept existing: {env_path}{RESET}")
+
     # --- Gitignore check ------------------------------------------------
     git_root = _find_git_root(cwd)
     if git_root:
         unignored = [
             name
-            for name in ([orgs_path.name] + ([target.name] if local else []))
+            for name in ([orgs_path.name, ".env"] + ([target.name] if local else []))
             if not _gitignore_covers(git_root, name)
         ]
         if unignored:
@@ -135,5 +238,5 @@ def init(
 
     # --- Next step -------------------------------------------------------
     typer.echo("")
-    typer.echo(f"{CYAN}next: goldilocks fetch 🫧{RESET}")
+    typer.echo(f"{CYAN}next: goldilocks doctor, then goldilocks fetch 🫧{RESET}")
     typer.echo("")

@@ -31,6 +31,7 @@ from goldilocks_cli.commands.stats import stats
 from goldilocks_cli.commands.sieve import sieve
 from goldilocks_cli.commands.inspect_export import inspect_export
 from goldilocks_cli.commands.init import init
+from goldilocks_cli.commands.status import status
 
 
 
@@ -111,6 +112,18 @@ def welcome():
 @app.callback(invoke_without_command=True)
 def main(ctx: typer.Context):
     """🫧 Goldilocks — Pipeline Intelligence Platform"""
+    # ── Credentials: load .env (env always wins), guard the configs ──
+    from goldilocks_cli.core.credentials import (
+        load_env_file,
+        check_config_for_secrets,
+    )
+    from goldilocks_cli.core.config import config_paths
+
+    load_env_file()
+    for config_file in config_paths():
+        for warning in check_config_for_secrets(config_file):
+            typer.echo(f"{RED}{warning}{RESET}")
+
     if ctx.invoked_subcommand is None:
         print_logo()
         typer.echo(
@@ -118,6 +131,8 @@ def main(ctx: typer.Context):
         )
 app.command()(init)
 app.command()(fetch)
+app.command()(status)
+app.command(name="survey")(status)
 
 app.command()(visualise)
 

@@ -61,6 +61,8 @@ NODE_SHAPES = {
     "copy":         "[{label}]",
     "jsonsplitter": "[{label}]",
     "datatransform":"[{label}]",
+    "pipeline":      "[{label}]",
+    "collapsed_chain":"[{label}]",
 }
 
 
@@ -144,21 +146,29 @@ LEGEND = """
 # classDef defines reusable style classes in Mermaid
 
 CLASSDEFS = """
-    classDef http      fill:#D4A017,stroke:#8B6914,color:#1A1A1A
-    classDef script    fill:#4A90D9,stroke:#2C5F8A,color:#FFFFFF
-    classDef pipeexec  fill:#7B68EE,stroke:#483D8B,color:#FFFFFF
-    classDef mapper    fill:#5CB85C,stroke:#3D7A3D,color:#FFFFFF
-    classDef sftp      fill:#F0A500,stroke:#A06800,color:#1A1A1A
-    classDef db        fill:#20B2AA,stroke:#147870,color:#FFFFFF
-    classDef filter    fill:#E74C3C,stroke:#922B21,color:#FFFFFF
-    classDef trigger   fill:#95A5A6,stroke:#626D6E,color:#FFFFFF
-    classDef default   fill:#F5F5F5,stroke:#AAAAAA,color:#1A1A1A
-    classDef dynamodb      fill:#6A5ACD,stroke:#3D348B,color:#FFFFFF
-    classDef router        fill:#E74C3C,stroke:#922B21,color:#FFFFFF
-    classDef union         fill:#C39BD3,stroke:#7D3C98,color:#1A1A1A
-    classDef copy          fill:#AED6F1,stroke:#2E86C1,color:#1A1A1A
-    classDef jsonsplitter  fill:#F9E79F,stroke:#B7950B,color:#1A1A1A
-    classDef datatransform fill:#82E0AA,stroke:#239B56,color:#1A1A1A
+    classDef httpclient     fill:#D4A017,stroke:#8B6914,color:#1A1A1A
+    classDef script         fill:#4A90D9,stroke:#2C5F8A,color:#FFFFFF
+    classDef pipeexec       fill:#7B68EE,stroke:#483D8B,color:#FFFFFF
+    classDef mapper         fill:#5CB85C,stroke:#3D7A3D,color:#FFFFFF
+    classDef sftp_get       fill:#F0A500,stroke:#A06800,color:#1A1A1A
+    classDef sftp_put       fill:#E07B00,stroke:#904D00,color:#FFFFFF
+    classDef db_select      fill:#20B2AA,stroke:#147870,color:#FFFFFF
+    classDef db_insert      fill:#17A589,stroke:#0E6B5A,color:#FFFFFF
+    classDef filter         fill:#E74C3C,stroke:#922B21,color:#FFFFFF
+    classDef trigger        fill:#95A5A6,stroke:#626D6E,color:#FFFFFF
+    classDef default        fill:#F5F5F5,stroke:#AAAAAA,color:#1A1A1A
+    classDef dynamodb       fill:#6A5ACD,stroke:#3D348B,color:#FFFFFF
+    classDef router         fill:#E74C3C,stroke:#922B21,color:#FFFFFF
+    classDef union          fill:#C39BD3,stroke:#7D3C98,color:#1A1A1A
+    classDef copy           fill:#AED6F1,stroke:#2E86C1,color:#1A1A1A
+    classDef jsonsplitter   fill:#F9E79F,stroke:#B7950B,color:#1A1A1A
+    classDef groupbyfields  fill:#D5F5E3,stroke:#52BE80,color:#1A1A1A
+    classDef recordreplay   fill:#FADBD8,stroke:#CD6155,color:#1A1A1A
+    classDef sort           fill:#E8DAEF,stroke:#8E44AD,color:#1A1A1A
+    classDef unique         fill:#D6EAF8,stroke:#3498DB,color:#1A1A1A
+    classDef datatransform  fill:#82E0AA,stroke:#239B56,color:#1A1A1A
+    classDef pipeline       fill:#00BFFF,stroke:#0080AA,color:#1A1A1A
+    classDef collapsed_chain fill:#FFF8DC,stroke:#8B6914,color:#1A1A1A,stroke-width:2px,stroke-dasharray:6 4
 """
 
 

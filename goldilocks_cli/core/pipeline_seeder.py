@@ -15,7 +15,8 @@ import os
 import json
 from pathlib import Path
 from neo4j import GraphDatabase
-from goldilocks_cli.core.snap_resolver import resolve_snap_type
+from goldilocks_cli.core.snap_resolver import resolve_snap_type, snap_wipes_context
+from goldilocks_cli.core.state import read_file_state, write_graph_state
 
 
 
@@ -69,7 +70,7 @@ def build_snap(pipeline_id: str, snap_id: str, snap: dict) -> dict:
         "class_id":       class_id,
         "error":          error,
         "child_pipeline": child_pipeline,
-        "wipes_context":  snap_type in ["httpclient", "script", "sftp_get", "sftp_put", "binarytodocument"],
+        "wipes_context":  snap_wipes_context(snap_type, class_id),
     }
 
 # ------------------------------------------------------------
@@ -262,10 +263,14 @@ def seed_parent_child_relationships(tx, summaries: list) -> int:
 # ------------------------------------------------------------
 
 def main():
-    # Neo4j credentials from environment
-    uri  = os.environ["NEO4J_URI"]
-    user = os.environ.get("NEO4J_USER", "neo4j")
-    pwd  = os.environ["NEO4J_PASSWORD"]
+    # Neo4j credentials — via the central credentials module
+    from goldilocks_cli.core.credentials import (
+        require_credential, get_credential, NEO4J_DEFAULT_USER,
+    )
+
+    uri  = require_credential("NEO4J_URI", "seed the graph")
+    user = get_credential("NEO4J_USER") or NEO4J_DEFAULT_USER
+    pwd  = require_credential("NEO4J_PASSWORD", "seed the graph")
 
     # Load anonymised pipeline export
     export_path = Path(os.getenv("GOLDILOCKS_EXPORT_PATH", "export_anonymised.json"))
@@ -277,6 +282,8 @@ def main():
     print(f"📂 Loading: {export_path}")
     with open(export_path, "r", encoding="utf-8") as f:
         data = json.load(f)
+
+    file_state = read_file_state(export_path) or {}
 
     # Handle project export (entries[]) or single pipeline
     pipelines = data.get("entries", [data])
@@ -309,6 +316,12 @@ def main():
             print()
 
             total = session.execute_read(count_nodes)
+            session.execute_write(
+                write_graph_state,
+                source_file=export_path.name,
+                pipeline_count=len(pipelines),
+                source_sieved_at=file_state.get("sieved_at"),
+            )
 
     # Final summary
     print("=" * 50)

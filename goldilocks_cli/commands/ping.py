@@ -1,5 +1,4 @@
 # commands/ping.py
-import os
 import typer
 from rich.console import Console
 from goldilocks_cli.colours import CYAN, GREEN, RED, GOLD, RESET
@@ -18,9 +17,14 @@ def ping():
     try:
         from neo4j import GraphDatabase
 
-        uri      = os.environ["NEO4J_URI"]
-        user     = os.environ.get("NEO4J_USER", "neo4j")
-        password = os.environ["NEO4J_PASSWORD"]
+        from goldilocks_cli.core.credentials import (
+            require_credential, get_credential,
+            NEO4J_DEFAULT_USER, CredentialMissing,
+        )
+
+        uri      = require_credential("NEO4J_URI", "ping your graph")
+        user     = get_credential("NEO4J_USER") or NEO4J_DEFAULT_USER
+        password = require_credential("NEO4J_PASSWORD", "ping your graph")
 
         with console.status("[magenta]Connecting to Neo4j...[/magenta]", spinner="dots"):
             with GraphDatabase.driver(uri, auth=(user, password)) as driver:
@@ -35,6 +39,10 @@ def ping():
         typer.echo(f"   Pipelines:    {pipes}")
         typer.echo(f"   Snaps:        {snaps}")
         typer.echo(f"\n{GOLD}  Instance kept warm 🌟{RESET}\n")
+
+    except CredentialMissing as e:
+        typer.echo(f"{RED}{e}{RESET}\n")
+        raise typer.Exit(1)
 
     except Exception as e:
         typer.echo(f"{RED}❌ Neo4j unreachable: {e}{RESET}\n")

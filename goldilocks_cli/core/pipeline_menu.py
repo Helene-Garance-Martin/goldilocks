@@ -11,9 +11,13 @@ def pipeline_menu() -> str:
     """Interactive pipeline selector, shown only when no name is given."""
     from neo4j import GraphDatabase
 
-    uri = os.environ["NEO4J_URI"]
-    user = os.environ.get("NEO4J_USER", "neo4j")
-    password = os.environ["NEO4J_PASSWORD"]
+    from goldilocks_cli.core.credentials import (
+        require_credential, get_credential, NEO4J_DEFAULT_USER,
+    )
+
+    uri = require_credential("NEO4J_URI", "list your pipelines")
+    user = get_credential("NEO4J_USER") or NEO4J_DEFAULT_USER
+    password = require_credential("NEO4J_PASSWORD", "list your pipelines")
 
     with GraphDatabase.driver(uri, auth=(user, password)) as driver:
         with driver.session() as session:

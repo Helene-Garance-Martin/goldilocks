@@ -1,6 +1,5 @@
 # commands/audit.py
 
-import os
 import typer
 
 from rich.console import Console
@@ -24,9 +23,14 @@ def audit():
     try:
         from neo4j import GraphDatabase
 
-        uri = os.environ["NEO4J_URI"]
-        user = os.environ.get("NEO4J_USER", "neo4j")
-        password = os.environ["NEO4J_PASSWORD"]
+        from goldilocks_cli.core.credentials import (
+            require_credential, get_credential,
+            NEO4J_DEFAULT_USER, CredentialMissing,
+        )
+
+        uri = require_credential("NEO4J_URI", "audit the graph")
+        user = get_credential("NEO4J_USER") or NEO4J_DEFAULT_USER
+        password = require_credential("NEO4J_PASSWORD", "audit the graph")
 
         with GraphDatabase.driver(uri, auth=(user, password)) as driver:
             with driver.session() as session:
@@ -35,14 +39,13 @@ def audit():
 
         typer.echo(f"\n{GREEN}✅ Audit complete.{RESET}\n")
 
-    except KeyError:
-        typer.echo(
-            f"{YELLOW}⚠️  Neo4j env vars not set "
-            f"(NEO4J_URI, NEO4J_PASSWORD){RESET}\n"
-        )
+    except CredentialMissing as e:
+        typer.echo(f"{RED}{e}{RESET}\n")
+        raise typer.Exit(1)
 
     except Exception as e:
         typer.echo(f"{RED}❌ Audit failed: {e}{RESET}\n")
+        raise typer.Exit(1)
 
 
 def _collect_findings(session) -> dict:

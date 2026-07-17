@@ -7,3 +7,4 @@ typer==0.24.1
 rich==15.0.0
 pydantic==2.13.3
 pydantic_core==2.46.3
+python-dotenv==1.2.2

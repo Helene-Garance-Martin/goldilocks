@@ -51,6 +51,7 @@ def test_load_config_defaults_when_no_files(sandbox):
     assert config["snaplogic"]["url"] == ""
     assert config["paths"]["sensitive_orgs"] == "sensitive_orgs.txt"
     assert config["paths"]["exports_dir"] == "pipeline_exports"
+    assert config["workflow"]["stale_after_days"] == "7"
 
 
 def test_load_config_reads_home_config(sandbox):
@@ -89,6 +90,7 @@ def test_dumps_toml_roundtrips(sandbox):
     original = {
         "snaplogic": {"url": "https://elastic.example.com/sl/x"},
         "paths": {"sensitive_orgs": "secrets/orgs.txt", "exports_dir": "out"},
+        "workflow": {"stale_after_days": "14"},
     }
     path = config_module.save_config(original, sandbox["work"] / "goldilocks.toml")
 
@@ -113,7 +115,7 @@ def test_init_writes_config_from_answers(sandbox):
 
     config = config_module.load_config()
     assert config["snaplogic"]["url"] == "https://elastic.example.com/sl/proj"
-    assert "next: goldilocks fetch" in result.stdout
+    assert "next: goldilocks doctor" in result.stdout  # doctor verifies before fetch
 
 
 def test_init_scaffolds_sensitive_orgs_template(sandbox):
@@ -168,6 +170,22 @@ def test_rerunning_init_can_edit_a_single_value(sandbox):
     assert config["paths"]["exports_dir"] == "custom_exports"  # untouched
 
 
+
+
+def test_rerunning_init_preserves_stale_threshold(sandbox):
+    path = sandbox["work"] / "goldilocks.toml"
+    path.write_text(
+        '[snaplogic]\nurl = "https://x.example.com/p"\n\n'
+        '[paths]\nsensitive_orgs = "sensitive_orgs.txt"\nexports_dir = "pipeline_exports"\n\n'
+        '[workflow]\nstale_after_days = "21"\n',
+        encoding="utf-8",
+    )
+
+    runner.invoke(app, ["init", "--local"], input="\n\n\n")
+
+    assert config_module.load_config()["workflow"]["stale_after_days"] == "21"
+
+
 def test_init_writes_to_home_by_default(sandbox):
     runner.invoke(app, ["init"], input="https://home.example.com/p\n\n\n")
 
@@ -182,12 +200,13 @@ def test_init_warns_when_gitignore_misses_sensitive_orgs(sandbox):
 
     assert "Not in .gitignore" in result.stdout
     assert "sensitive_orgs.txt" in result.stdout
+    assert ".env" in result.stdout  # credentials joined the check
 
 
 def test_init_is_happy_when_gitignore_covers_secrets(sandbox):
     (sandbox["work"] / ".git").mkdir()
     (sandbox["work"] / ".gitignore").write_text(
-        "sensitive_orgs.txt\ngoldilocks.toml\n", encoding="utf-8"
+        "sensitive_orgs.txt\ngoldilocks.toml\n.env\n", encoding="utf-8"
     )
 
     result = runner.invoke(app, ["init", "--local"], input="https://x.example.com/p\n\n\n")

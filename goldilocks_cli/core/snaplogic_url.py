@@ -1,5 +1,10 @@
 from urllib.parse import unquote
 
+# The pod's public export API base — also doctor's live-check target.
+SNAPLOGIC_EXPORT_BASE = (
+    "https://emea.snaplogic.com/api/1/rest/public/project/export/"
+)
+
 
 def parse_snaplogic_url(url: str) -> dict:
     """
@@ -30,8 +35,8 @@ def parse_snaplogic_url(url: str) -> dict:
     project_path = "/".join(parts[1:])
 
     export_url = (
-    "https://emea.snaplogic.com/api/1/rest/public/project/export/"
-    f"{org}/{project_path}?asset_types=Pipeline"
+        SNAPLOGIC_EXPORT_BASE
+        + f"{org}/{project_path}?asset_types=Pipeline"
     )
 
     return {

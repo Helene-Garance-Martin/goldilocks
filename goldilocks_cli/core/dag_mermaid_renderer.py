@@ -1,131 +1,181 @@
 # src/dag_mermaid_renderer.py
 # ------------------------------------------------------------
 # GOLDILOCKS — DAG Mermaid Renderer
-# Renders a DAGModel into Mermaid syntax.
-#
-# Emits a single YAML front matter block combining title + Mermaid
-# config — the modern (v10+) pattern that replaces the older
-# `%%{init: ...}%%` directive. All sizing, spacing and label policy
-# lives here, so the source travels cleanly between Confluence
-# (ContentCraft macro), GitHub, GitLab, Notion, Obsidian and
-# mermaid.live without per-host tweaks.
+# Mermaid syntax, labels, configuration and visual styling only.
 # ------------------------------------------------------------
 
-
-from goldilocks_cli.core.dag_models import DAGModel
+from goldilocks_cli.core.dag_models import DAGModel, DAGNode, PipelineCall
+from goldilocks_cli.core.mermaid_styles import CLASSDEFS, NODE_SHAPES
 from goldilocks_cli.core.snap_resolver import get_icon
-from goldilocks_cli.core.mermaid_styles import NODE_SHAPES, CLASSDEFS
-
-
-
-MERMAID_FRONTMATTER = """---
-title: "{title}"
-config:
-  flowchart:
-    useMaxWidth: false
-    htmlLabels: false
-    nodeSpacing: 30
-    rankSpacing: 45
-    curve: basis
-    padding: 8
-  themeVariables:
-    fontSize: '14px'
----"""
 
 
 def safe_mermaid_id(node_id: str) -> str:
-    """
-    Convert a DAG node id into a Mermaid-safe node id.
-    """
-    return "n_" + node_id.replace(":", "_").replace("-", "_")
+    """Convert a DAG node id into a Mermaid-safe node id."""
+    safe = "".join(character if character.isalnum() else "_" for character in node_id)
+    return "n_" + safe
+
+
+def _escape_label(label: str) -> str:
+    return (
+        str(label)
+        .replace("&", "&amp;")
+        .replace('"', "&quot;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+    )
 
 
 def format_mermaid_label(label: str, snap_type: str) -> str:
-    """
-    Add icon and readable label for Mermaid nodes.
-    """
-    icon = get_icon(snap_type)
-    return f"{icon}<br/>{label}"
+    """Add the existing type icon and a readable label."""
+    if snap_type == "collapsed_chain":
+        return _escape_label(label)
+    icon = "📦" if snap_type == "pipeline" else get_icon(snap_type)
+    return f"{icon}<br/>{_escape_label(label)}"
 
 
 def _yaml_safe_title(title: str) -> str:
-    """
-    Escape characters that would break a YAML double-quoted scalar.
-   
-     """
     return title.replace("\\", "\\\\").replace('"', '\\"')
 
 
-def _clean_child_pipeline_ref(ref: str) -> str:
+def build_mermaid_frontmatter(title: str) -> str:
+    """Build central diagram-local Mermaid configuration.
+
+    Mermaid treats rendering limits such as ``maxTextSize`` and ``maxEdges``
+    as secure configuration. They must be supplied to ``mmdc`` through its
+    configuration file, not embedded in diagram front matter.
     """
-    Convert a child pipeline path into a readable display name.
-    """
-    return ref.replace("\\", "/").split("/")[-1]
+    return "\n".join(
+        [
+            "---",
+            f'title: "{_yaml_safe_title(title)}"',
+            "config:",
+            "  flowchart:",
+            "    useMaxWidth: false",
+            "    htmlLabels: false",
+            "    nodeSpacing: 30",
+            "    rankSpacing: 45",
+            "    curve: basis",
+            "    padding: 8",
+            "  themeVariables:",
+            "    fontSize: '14px'",
+            "---",
+        ]
+    )
 
 
-def render_dag_mermaid(dag: DAGModel, direction: str = "LR") -> str:
-    """
-    Render a DAGModel as Mermaid flowchart syntax.
-    """
+def _node_line(node: DAGNode, indent: str = "    ") -> str:
+    node_id = safe_mermaid_id(node.id)
+    label = format_mermaid_label(node.label, node.type)
+    shape = NODE_SHAPES.get(node.type, NODE_SHAPES["default"])
+    node_str = shape.replace("{label}", label)
+    return f"{indent}{node_id}{node_str}:::{node.type}"
 
-    lines = []
+
+def _edge_line(source: str, target: str, relationship: str, indent: str = "    ") -> str:
+    source_id = safe_mermaid_id(source)
+    target_id = safe_mermaid_id(target)
+    if relationship == "CONNECTS_TO":
+        return f"{indent}{source_id} --> {target_id}"
+    if relationship == "CALLS":
+        return f"{indent}{source_id} -.->|CALLS| {target_id}"
+    if "ERROR" in relationship.upper():
+        return f"{indent}{source_id} -.->|ERROR| {target_id}"
+    return f"{indent}{source_id} -.->|{relationship}| {target_id}"
 
 
-    safe_title = _yaml_safe_title(dag.pipeline_name)
-    lines.append(MERMAID_FRONTMATTER.format(title=safe_title))
-    lines.append(f"flowchart {direction}")
-    lines.append("")
-
-    # Nodes
-    lines.append("    %% Nodes")
+def _collapse_provenance_lines(dag: DAGModel, indent: str = "    ") -> list[str]:
+    lines: list[str] = []
     for node in dag.nodes:
-        node_id = safe_mermaid_id(node.id)
-        label = format_mermaid_label(node.label, node.type)
-
-        shape = NODE_SHAPES.get(
-            node.type,
-            NODE_SHAPES["default"],
+        if node.synthetic_kind != "linear_chain":
+            continue
+        description = (
+            f"{node.first_snap_name} -> ... -> {node.last_snap_name}, "
+            f"{node.snap_count} snaps"
         )
+        lines.append(f"{indent}%% {safe_mermaid_id(node.id)}: {description}")
+    return lines
 
-        node_str = shape.replace("{label}", label)
 
-        lines.append(f"    {node_id}{node_str}:::{node.type}")
+def render_dag_mermaid(
+    dag: DAGModel,
+    direction: str = "LR",
+    *,
+    include_external_references: bool = True,
+) -> str:
+    """Render one already-prepared DAGModel as Mermaid flowchart syntax."""
+    lines = [
+        build_mermaid_frontmatter(dag.pipeline_name),
+        f"flowchart {direction}",
+        "",
+        "    %% Nodes",
+    ]
+    lines.extend(_collapse_provenance_lines(dag))
+    lines.extend(_node_line(node) for node in dag.nodes)
+    lines.extend(["", "    %% Execution edges"])
+    lines.extend(
+        _edge_line(edge.source, edge.target, edge.relationship)
+        for edge in dag.edges
+    )
 
-    lines.append("")
+    if include_external_references:
+        lines.extend(["", "    %% Child pipeline calls"])
+        external_index = 1
+        for node in dag.nodes:
+            if node.type != "pipeexec" or not node.child_pipeline:
+                continue
+            clean_ref = node.child_pipeline.replace("\\", "/").split("/")[-1]
+            ref_id = f"external:{external_index}:{clean_ref}"
+            external_index += 1
+            external_node = DAGNode(
+                id=ref_id,
+                label=clean_ref,
+                type="pipeline",
+            )
+            lines.append(_node_line(external_node))
+            lines.append(_edge_line(node.id, ref_id, "CALLS"))
 
-    # Execution edges
-    lines.append("    %% Execution edges")
-    for edge in dag.edges:
-        source = safe_mermaid_id(edge.source)
-        target = safe_mermaid_id(edge.target)
-        lines.append(f"    {source} --> {target}")
+    lines.extend(["", "    %% Styles", CLASSDEFS])
+    return "\n".join(lines)
 
-    lines.append("")
 
-    # Child pipeline calls
-    lines.append("    %% Child pipeline calls")
-    external_index = 1
+def render_project_mermaid(
+    dags: list[DAGModel],
+    calls: list[PipelineCall],
+    direction: str = "LR",
+) -> str:
+    """Render an all-snaps project view from already-prepared pipeline DAGs."""
+    lines = [
+        build_mermaid_frontmatter("Goldilocks Combined"),
+        "flowchart TD",
+        "",
+    ]
 
-    for node in dag.nodes:
-        if node.type != "pipeexec":
-            continue
+    for dag in dags:
+        subgraph_id = safe_mermaid_id(f"pipeline:{dag.pipeline_id or dag.pipeline_name}")
+        title = _escape_label(dag.pipeline_name)
+        lines.append(f'    subgraph {subgraph_id}["{title}"]')
+        lines.append(f"        direction {direction}")
+        lines.extend(_collapse_provenance_lines(dag, indent="        "))
+        lines.extend(_node_line(node, indent="        ") for node in dag.nodes)
+        for edge in dag.edges:
+            lines.append(
+                _edge_line(
+                    edge.source,
+                    edge.target,
+                    edge.relationship,
+                    indent="        ",
+                )
+            )
+        lines.append("    end")
+        lines.append("")
 
-        if not node.child_pipeline:
-            continue
+    lines.append("    %% Pipeline calls")
+    for call in calls:
+        source = call.source_snap_id
+        if source is None:
+            source = f"pipeline:{call.source_pipeline_id}"
+        target = f"pipeline:{call.target_pipeline_id}"
+        lines.append(_edge_line(source, target, "CALLS"))
 
-        clean_ref = _clean_child_pipeline_ref(node.child_pipeline)
-        ref_id = f"external_ref_{external_index}"
-        external_index += 1
-
-        lines.append(f'    {ref_id}["📦 {clean_ref}"]:::pipeexec')
-
-        source = safe_mermaid_id(node.id)
-        lines.append(f"    {source} -.->|CALLS| {ref_id}")
-
-    lines.append("")
-
-    # Styles
-    lines.append("    %% Styles")
-    lines.append(CLASSDEFS)
-
+    lines.extend(["", "    %% Styles", CLASSDEFS])
     return "\n".join(lines)

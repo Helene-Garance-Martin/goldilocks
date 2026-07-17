@@ -25,8 +25,21 @@ from goldilocks_cli.core.security import validate_query, safe_query
 # CLIENT
 # ------------------------------------------------------------
 
-client = anthropic.Anthropic()
+# Lazy client — constructed on first use so importing this
+# module never demands a key, and the key itself flows only
+# through core.credentials (never read here directly).
 # 👆 Swap to ollama.Client() when running locally
+_client = None
+
+def _get_client() -> "anthropic.Anthropic":
+    global _client
+    if _client is None:
+        from goldilocks_cli.core.credentials import require_credential
+        api_key = require_credential(
+            "ANTHROPIC_API_KEY", "ask Goldilocks questions"
+        )
+        _client = anthropic.Anthropic(api_key=api_key)
+    return _client
 
 # ------------------------------------------------------------
 # CYPHER GENERATOR — temperature 0.1 (precise)
@@ -62,7 +75,7 @@ def clean_cypher(text: str) -> str:
 def generate_cypher(question: str, schema: str) -> str:
     """Convert natural language question to Cypher query."""
     
-    response = client.messages.create(
+    response = _get_client().messages.create(
         model="claude-sonnet-4-6",
         max_tokens=500,
         temperature=0.1,
@@ -116,7 +129,7 @@ Return ONLY the Cypher query, nothing else."""
 def explain_results(question: str, results: list) -> str:
     """Convert Neo4j results to plain English explanation."""
 
-    response = client.messages.create(
+    response = _get_client().messages.create(
         model="claude-sonnet-4-6",
         max_tokens=800,
         temperature=0.5,
@@ -183,7 +196,7 @@ FUN_TRIGGERS = ["rags to dags", "boucles d'or", "curls", "just right"]
 # MAIN AGENT FUNCTION
 # ------------------------------------------------------------
 
-def ask_goldilocks(question: str) -> str:
+def ask_goldilocks(question: str, graph_checked: bool = False) -> str:
     """
     Ask Goldilocks a natural language question about your pipelines.
     
@@ -196,7 +209,7 @@ def ask_goldilocks(question: str) -> str:
 
     # ── Fun triggers ───────────────────────────────────────
     if any(trigger in question.lower() for trigger in FUN_TRIGGERS):
-        response = client.messages.create(
+        response = _get_client().messages.create(
             model="claude-sonnet-4-6",
             max_tokens=200,
             temperature=1.0,
@@ -207,26 +220,28 @@ def ask_goldilocks(question: str) -> str:
         )
         return response.content[0].text.strip()
 
-    uri      = os.environ["NEO4J_URI"]
-    user     = os.environ.get("NEO4J_USER", "neo4j")
-    password = os.environ["NEO4J_PASSWORD"]
+    from goldilocks_cli.core.credentials import (
+        require_credential, get_credential, NEO4J_DEFAULT_USER,
+    )
+
+    uri      = require_credential("NEO4J_URI", "ask Goldilocks questions")
+    user     = get_credential("NEO4J_USER") or NEO4J_DEFAULT_USER
+    password = require_credential("NEO4J_PASSWORD", "ask Goldilocks questions")
 
     try:
         with GraphDatabase.driver(uri, auth=(user, password)) as driver:
             with driver.session() as session:
 
                 # ── Empty graph guard ──────────────────────
-                total = session.run("MATCH (n) RETURN count(n) AS total").single()["total"]
-                if total == 0:
-                    return (
-                        "⚠️  Your graph is empty!\n\n"
-                        "💡 Run the flow first:\n"
-                        "   goldilocks fetch\n"
-                        "   goldilocks sanitise\n"
-                        "   goldilocks anonymise\n"
-                        "   goldilocks seed"
-                    )
-                
+                if not graph_checked:
+                    from goldilocks_cli.core.state import read_graph_state
+                    graph_state = read_graph_state(session)
+                    if int(graph_state.get("pipeline_count") or 0) == 0:
+                        return (
+                            "🌾 The graph has not been seeded yet.\n\n"
+                            "Next: goldilocks seed"
+                        )
+
                 # ── Generate Cypher ────────────────────────
                 cypher = generate_cypher(question, GRAPH_SCHEMA)
                 print(f"\n🔍 Generated query: {cypher}\n")

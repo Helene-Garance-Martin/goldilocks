@@ -1,6 +1,5 @@
 # commands/stats.py
 
-import os
 import typer
 
 from rich.console import Console
@@ -12,28 +11,38 @@ console = Console()
 
 def stats(
     uri: str = typer.Option(
-        os.getenv("NEO4J_URI", ""),
-        help="Neo4j Aura URI",
+        None,
+        help="Neo4j Aura URI (defaults to NEO4J_URI)",
     ),
     username: str = typer.Option(
-        os.getenv("NEO4J_USER", "neo4j"),
-        help="Neo4j username",
+        None,
+        help="Neo4j username (defaults to NEO4J_USER)",
     ),
     password: str = typer.Option(
-        os.getenv("NEO4J_PASSWORD", ""),
-        help="Neo4j password",
+        None,
+        help="Neo4j password (defaults to NEO4J_PASSWORD)",
     ),
 ):
     """
     📊 Show graph topology statistics.
     """
 
-    if not uri:
-        typer.echo(f"{RED}❌ NEO4J_URI not configured.{RESET}")
-        raise typer.Exit(1)
+    # ── Credentials — flags win, else the central module ──
+    from goldilocks_cli.core.credentials import (
+        require_credential, get_credential,
+        NEO4J_DEFAULT_USER, CredentialMissing,
+    )
 
-    if not password:
-        typer.echo(f"{RED}❌ NEO4J_PASSWORD not configured.{RESET}")
+    try:
+        uri = uri or require_credential("NEO4J_URI", "read graph stats")
+        username = (
+            username or get_credential("NEO4J_USER") or NEO4J_DEFAULT_USER
+        )
+        password = (
+            password or require_credential("NEO4J_PASSWORD", "read graph stats")
+        )
+    except CredentialMissing as e:
+        typer.echo(f"{RED}{e}{RESET}")
         raise typer.Exit(1)
 
     try:

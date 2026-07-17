@@ -57,12 +57,31 @@ def test_check_missing_file_fails_warm(tmp_path):
 # pre-seed gate (seeder itself mocked — no Neo4j)
 # ------------------------------------------------------------
 
-def _invoke_seed(monkeypatch, tmp_path, content: dict, args=None, input_text=None):
+def _invoke_seed(
+    monkeypatch,
+    tmp_path,
+    content: dict,
+    *,
+    marked=False,
+    graph_state=None,
+    args=None,
+    input_text=None,
+):
     calls = []
     import goldilocks_cli.core.pipeline_seeder as seeder
+    import goldilocks_cli.commands.seed as seed_command
+    from goldilocks_cli.core.state import embed_file_state
+
     monkeypatch.setattr(seeder, "main", lambda: calls.append(True))
+    monkeypatch.setattr(
+        seed_command,
+        "_read_current_graph_state",
+        lambda *a, **k: graph_state or {"pipeline_count": 0},
+    )
+
     f = tmp_path / "in.json"
-    f.write_text(json.dumps(content))
+    payload = embed_file_state(content, "export.json", version="test") if marked else content
+    f.write_text(json.dumps(payload))
     argv = ["--input", str(f), "--uri", "neo4j+s://fake", "--password", "pw"]
     if args:
         argv += args
@@ -70,55 +89,104 @@ def _invoke_seed(monkeypatch, tmp_path, content: dict, args=None, input_text=Non
     return result, calls
 
 
-def test_seed_clean_input_proceeds(monkeypatch, tmp_path):
+def test_seed_marked_clean_input_proceeds(monkeypatch, tmp_path):
     result, calls = _invoke_seed(
-        monkeypatch, tmp_path, {"name": "ORG_1", "u": "https://api.org-1.com/endpoint-1"}
+        monkeypatch,
+        tmp_path,
+        {"name": "ORG_1", "u": "https://api.org-1.com/endpoint-1"},
+        marked=True,
     )
     assert result.exit_code == 0
     assert "pre-seed check: clean" in result.output
-    assert calls  # seeder ran
+    assert calls
 
 
-def test_seed_dirty_input_prompts_and_cancels_on_no(monkeypatch, tmp_path):
+def test_seed_clean_legacy_input_prompts_and_defaults_no(monkeypatch, tmp_path):
     result, calls = _invoke_seed(
-        monkeypatch, tmp_path,
-        {"note": "mail pat@real-place.example"},
+        monkeypatch,
+        tmp_path,
+        {"name": "ORG_1", "u": "https://api.org-1.com/endpoint-1"},
         input_text="n\n",
     )
     assert result.exit_code == 1
-    assert "Post-scrub audit found" in result.output
-    assert "Seeding cancelled" in result.output
-    assert not calls  # seeder never ran
+    assert "no Goldilocks sieve marker" in result.output
+    assert "Proceed with seeding?" in result.output
+    assert not calls
 
 
-def test_seed_dirty_input_proceeds_on_yes(monkeypatch, tmp_path):
+def test_seed_clean_legacy_input_proceeds_on_yes(monkeypatch, tmp_path):
     result, calls = _invoke_seed(
-        monkeypatch, tmp_path,
-        {"note": "mail pat@real-place.example"},
+        monkeypatch,
+        tmp_path,
+        {"name": "ORG_1", "u": "https://api.org-1.com/endpoint-1"},
         input_text="y\n",
     )
     assert result.exit_code == 0
     assert calls
 
 
-def test_seed_force_skips_prompt(monkeypatch, tmp_path):
+def test_seed_dirty_input_is_hard_refusal(monkeypatch, tmp_path):
     result, calls = _invoke_seed(
-        monkeypatch, tmp_path,
+        monkeypatch,
+        tmp_path,
+        {"note": "mail pat@real-place.example"},
+        input_text="y\n",
+    )
+    assert result.exit_code == 1
+    assert "Post-scrub audit found" in result.output
+    assert "Seed refused" in result.output
+    assert "seed anyway" not in result.output.lower()
+    assert not calls
+
+
+def test_seed_force_never_bypasses_leak_refusal(monkeypatch, tmp_path):
+    result, calls = _invoke_seed(
+        monkeypatch,
+        tmp_path,
         {"note": "mail pat@real-place.example"},
         args=["--force"],
     )
+    assert result.exit_code == 1
+    assert "Seed refused" in result.output
+    assert not calls
+
+
+def test_seed_force_allows_clean_legacy_input(monkeypatch, tmp_path):
+    result, calls = _invoke_seed(
+        monkeypatch,
+        tmp_path,
+        {"name": "ORG_1"},
+        args=["--force"],
+    )
     assert result.exit_code == 0
-    assert "seed anyway" not in result.output
+    assert "Proceed with seeding?" not in result.output
     assert calls
 
 
+def test_seed_combines_legacy_and_reseed_into_one_prompt(monkeypatch, tmp_path):
+    result, calls = _invoke_seed(
+        monkeypatch,
+        tmp_path,
+        {"name": "ORG_1"},
+        graph_state={
+            "pipeline_count": 2,
+            "source_file": "in.json",
+            "last_seeded": "2026-07-17T10:00:00Z",
+        },
+        input_text="n\n",
+    )
+    assert result.exit_code == 1
+    assert "no Goldilocks sieve marker" in result.output
+    assert "Already seeded from in.json" in result.output
+    assert result.output.count("Proceed with seeding?") == 1
+    assert not calls
+
+
 def test_seed_missing_input_fails_warm(monkeypatch, tmp_path):
-    import goldilocks_cli.core.pipeline_seeder as seeder
-    monkeypatch.setattr(seeder, "main", lambda: None)
     result = runner.invoke(
         make_seed_app(),
         ["--input", str(tmp_path / "nope.json"), "--uri", "neo4j+s://fake", "--password", "pw"],
     )
     assert result.exit_code == 1
     assert "File not found" in result.output
-    assert "sieve" in result.output  # points at the next step
+    assert "sieve" in result.output

@@ -171,9 +171,13 @@ def describe_token_risks(pipeline_name: str, pipeline: dict) -> str:
 # ------------------------------------------------------------
 
 def main():
-    uri      = os.environ["NEO4J_URI"]
-    user     = os.environ.get("NEO4J_USER", "neo4j")
-    password = os.environ["NEO4J_PASSWORD"]
+    from goldilocks_cli.core.credentials import (
+        require_credential, get_credential, NEO4J_DEFAULT_USER,
+    )
+
+    uri      = require_credential("NEO4J_URI", "describe your pipelines")
+    user     = get_credential("NEO4J_USER") or NEO4J_DEFAULT_USER
+    password = require_credential("NEO4J_PASSWORD", "describe your pipelines")
 
     with GraphDatabase.driver(uri, auth=(user, password)) as driver:
         driver.verify_connectivity()
@@ -191,9 +195,13 @@ if __name__ == "__main__":
 
 def describe_from_neo4j() -> str:
     """Called by goldilocks ask command — returns full description."""
-    uri      = os.environ["NEO4J_URI"]
-    user     = os.environ.get("NEO4J_USER", "neo4j")
-    password = os.environ["NEO4J_PASSWORD"]
+    from goldilocks_cli.core.credentials import (
+        require_credential, get_credential, NEO4J_DEFAULT_USER,
+    )
+
+    uri      = require_credential("NEO4J_URI", "describe your pipelines")
+    user     = get_credential("NEO4J_USER") or NEO4J_DEFAULT_USER
+    password = require_credential("NEO4J_PASSWORD", "describe your pipelines")
 
     with GraphDatabase.driver(uri, auth=(user, password)) as driver:
         with driver.session() as session:

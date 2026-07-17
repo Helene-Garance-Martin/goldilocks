@@ -85,3 +85,12 @@ class TestGetIcon:
 
     def test_datatransform(self):
         assert resolve_snap_type("com-snaplogic-snaps-transform-datatransform") == "datatransform"
+
+def test_context_wipe_classification_reuses_class_id_metadata():
+    from goldilocks_cli.core.snap_resolver import snap_wipes_context
+
+    assert snap_wipes_context(
+        "mapper",
+        "com-snaplogic-snaps-transform-binarytodocument",
+    ) is True
+    assert snap_wipes_context("mapper", "com-snaplogic-snaps-transform-mapper") is False

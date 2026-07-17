@@ -5,8 +5,28 @@ from pathlib import Path
 from typing import Optional
 from rich.console import Console
 from goldilocks_cli.colours import CYAN, GREEN, RED, GOLD, RESET
+from goldilocks_cli.core.credentials import CredentialMissing
 
 console = Console()
+
+
+def _read_current_graph_state() -> dict:
+    """Read the lightweight graph state before invoking the AI agent."""
+    from neo4j import GraphDatabase
+    from goldilocks_cli.core.credentials import (
+        require_credential, get_credential, NEO4J_DEFAULT_USER,
+    )
+    from goldilocks_cli.core.state import read_graph_state
+
+    uri = require_credential("NEO4J_URI", "ask Goldilocks questions")
+    user = get_credential("NEO4J_USER") or NEO4J_DEFAULT_USER
+    password = require_credential("NEO4J_PASSWORD", "ask Goldilocks questions")
+
+    with GraphDatabase.driver(uri, auth=(user, password)) as driver:
+        driver.verify_connectivity()
+        with driver.session() as session:
+            return read_graph_state(session)
+
 
 def ask(
     question: Optional[str] = typer.Argument(None, help="Ask Goldilocks a question about your pipelines"),
@@ -18,21 +38,44 @@ def ask(
     if not question:
         question = typer.prompt(f"{GOLD}Ask Goldilocks{RESET}")
 
+    local_token_query = any(
+        word in question.lower()
+        for word in ["token", "risk", "wipes", "credential", "bearer"]
+    )
+
+    # Token risk queries intentionally remain file-based. All graph-backed
+    # questions check the seed prerequisite before Anthropic is contacted.
+    if not local_token_query:
+        try:
+            graph_state = _read_current_graph_state()
+        except CredentialMissing as e:
+            typer.echo(f"{RED}{e}{RESET}\n")
+            raise typer.Exit(1)
+        except Exception as e:
+            typer.echo(f"{RED}❌ Neo4j is unavailable: {e}{RESET}")
+            typer.echo("   Next: goldilocks doctor\n")
+            raise typer.Exit(1)
+
+        if int(graph_state.get("pipeline_count") or 0) == 0:
+            typer.echo(f"{GOLD}🌾 The graph has not been seeded yet.{RESET}")
+            typer.echo("   Next: goldilocks seed\n")
+            raise typer.Exit(1)
+
     typer.echo(f"{CYAN}🤖 Thinking...{RESET}\n")
 
     # ── Token risk queries (local — no Neo4j needed) ──────
-    if any(word in question.lower() for word in ["token", "risk", "wipes", "credential", "bearer"]):
+    if local_token_query:
         try:
-            data      = json.loads(Path(input).read_text())
+            data = json.loads(Path(input).read_text())
             pipelines = data.get("entries", [data])
-            matching  = [
+            matching = [
                 p for p in pipelines
                 if p.get("name", "").lower() in question.lower()
             ] or pipelines
 
             from goldilocks_cli.core.describer import describe_token_risks
             for pipeline in matching:
-                name   = pipeline.get("name", "Unknown")
+                name = pipeline.get("name", "Unknown")
                 report = describe_token_risks(name, pipeline)
                 typer.echo(report)
             return
@@ -45,10 +88,14 @@ def ask(
     try:
         with console.status("[magenta]Consulting the graph...[/magenta]", spinner="dots"):
             from goldilocks_cli.core.agent import ask_goldilocks
-            answer = ask_goldilocks(question)
+            answer = ask_goldilocks(question, graph_checked=True)
 
         typer.echo(answer)
         typer.echo("")
+
+    except CredentialMissing as e:
+        typer.echo(f"{RED}{e}{RESET}\n")
+        raise typer.Exit(1)
 
     except Exception as e:
         typer.echo(f"{RED}❌ Failed to answer question: {e}{RESET}\n")

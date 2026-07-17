@@ -7,7 +7,6 @@
 # pipeline relationships.
 # ============================================================
 
-import os
 import sys
 import time
 from rich.text import Text
@@ -115,20 +114,24 @@ def show_graph(
     try:
         from neo4j import GraphDatabase
 
-        uri = os.environ["NEO4J_URI"]
-        user = os.environ.get("NEO4J_USER", "neo4j")
-        password = os.environ["NEO4J_PASSWORD"]
+        from goldilocks_cli.core.credentials import (
+            require_credential, get_credential,
+            NEO4J_DEFAULT_USER, CredentialMissing,
+        )
+
+        uri = require_credential("NEO4J_URI", "draw the pipeline tree")
+        user = get_credential("NEO4J_USER") or NEO4J_DEFAULT_USER
+        password = require_credential("NEO4J_PASSWORD", "draw the pipeline tree")
 
         with GraphDatabase.driver(uri, auth=(user, password)) as driver:
             with driver.session() as session:
-                total = session.run(
-                    "MATCH (p:Pipeline) RETURN count(p) AS total"
-                ).single()["total"]
+                from goldilocks_cli.core.state import read_graph_state
+                graph_state = read_graph_state(session)
 
-                if total == 0:
-                    typer.echo(f"{GOLD}⚠️  Your graph is empty!{RESET}")
-                    typer.echo("💡 Run: goldilocks seed --uri your-uri")
-                    raise typer.Exit(0)
+                if int(graph_state.get("pipeline_count") or 0) == 0:
+                    typer.echo(f"{GOLD}🌾 The graph has not been seeded yet.{RESET}")
+                    typer.echo("   Next: goldilocks seed\n")
+                    raise typer.Exit(1)
 
                 families_result = session.run("""
                     MATCH (parent:Pipeline)-[:CALLS]->(child:Pipeline)
@@ -329,6 +332,13 @@ def show_graph(
                 console.print()
                 console.print()
                 typer.echo("")
+
+    except CredentialMissing as e:
+        typer.echo(f"{RED}{e}{RESET}\n")
+        raise typer.Exit(1)
+
+    except typer.Exit:
+        raise
 
     except Exception as e:
         typer.echo(f"{RED}❌ Failed: {e}{RESET}\n")
