@@ -31,6 +31,7 @@ from goldilocks_cli.commands.stats import stats
 from goldilocks_cli.commands.sieve import sieve
 from goldilocks_cli.commands.inspect_export import inspect_export
 from goldilocks_cli.commands.init import init
+from goldilocks_cli.commands.status import status
 
 
 
@@ -130,6 +131,8 @@ def main(ctx: typer.Context):
         )
 app.command()(init)
 app.command()(fetch)
+app.command()(status)
+app.command(name="survey")(status)
 
 app.command()(visualise)
 

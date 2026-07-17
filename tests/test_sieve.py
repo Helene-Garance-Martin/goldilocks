@@ -83,7 +83,8 @@ def test_plain_sieve_missing_input_fails_honestly(tmp_path, clean_anonymiser):
     )
 
     assert result.exit_code == 1
-    assert "Sieve failed" in result.output
+    assert "Fetched export not found" in result.output
+    assert "goldilocks fetch" in result.output
     assert "Sieve complete" not in result.output
     assert not anonymised.exists()
 

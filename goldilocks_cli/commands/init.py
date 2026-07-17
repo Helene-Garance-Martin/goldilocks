@@ -187,6 +187,11 @@ def init(
             "sensitive_orgs": sensitive_orgs,
             "exports_dir": exports_dir,
         },
+        # Item 26 adds workflow state without adding another setup prompt.
+        # Preserve a user's configured threshold on every re-run.
+        "workflow": {
+            "stale_after_days": current["workflow"]["stale_after_days"],
+        },
     }
 
     save_config(config, target)

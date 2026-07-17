@@ -275,7 +275,7 @@ def read_graph_state(session: Any) -> dict[str, Any]:
             m.source_file AS source_file,
             m.source_sieved_at AS source_sieved_at,
             m.tool_version AS tool_version,
-            count(p) AS pipeline_count
+            count(DISTINCT p) AS pipeline_count
         """,
         namespace=GRAPH_STATE_NAMESPACE,
     ).single()

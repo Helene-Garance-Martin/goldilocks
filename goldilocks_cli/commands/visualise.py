@@ -14,6 +14,24 @@ from goldilocks_cli.core.output_manager import (
     copy_mermaid_to_clipboard,
 )
 
+
+def _read_current_graph_state() -> dict:
+    """Read the graph prerequisite before menus or rendering."""
+    from neo4j import GraphDatabase
+    from goldilocks_cli.core.credentials import (
+        require_credential, get_credential, NEO4J_DEFAULT_USER,
+    )
+    from goldilocks_cli.core.state import read_graph_state
+
+    uri = require_credential("NEO4J_URI", "visualise the graph")
+    user = get_credential("NEO4J_USER") or NEO4J_DEFAULT_USER
+    password = require_credential("NEO4J_PASSWORD", "visualise the graph")
+
+    with GraphDatabase.driver(uri, auth=(user, password)) as driver:
+        driver.verify_connectivity()
+        with driver.session() as session:
+            return read_graph_state(session)
+
 def visualise(
     pipeline: str = typer.Argument(
         None,
@@ -75,6 +93,22 @@ def visualise(
     """
 
     typer.echo(f"\n{CYAN}🫧 goldilocks · visualise{RESET}\n")
+
+    if source == "traversal":
+        try:
+            graph_state = _read_current_graph_state()
+        except CredentialMissing as e:
+            typer.echo(f"{RED}{e}{RESET}\n")
+            raise typer.Exit(1)
+        except Exception as e:
+            typer.echo(f"{RED}❌ Neo4j is unavailable: {e}{RESET}")
+            typer.echo("   Next: goldilocks doctor\n")
+            raise typer.Exit(1)
+
+        if int(graph_state.get("pipeline_count") or 0) == 0:
+            typer.echo(f"{GOLD}🌾 The graph has not been seeded yet.{RESET}")
+            typer.echo("   Next: goldilocks seed\n")
+            raise typer.Exit(1)
 
     if source == "traversal" and pipeline is None:
         pipeline = pipeline_menu()

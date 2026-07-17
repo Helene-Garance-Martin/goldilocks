@@ -170,6 +170,22 @@ def test_rerunning_init_can_edit_a_single_value(sandbox):
     assert config["paths"]["exports_dir"] == "custom_exports"  # untouched
 
 
+
+
+def test_rerunning_init_preserves_stale_threshold(sandbox):
+    path = sandbox["work"] / "goldilocks.toml"
+    path.write_text(
+        '[snaplogic]\nurl = "https://x.example.com/p"\n\n'
+        '[paths]\nsensitive_orgs = "sensitive_orgs.txt"\nexports_dir = "pipeline_exports"\n\n'
+        '[workflow]\nstale_after_days = "21"\n',
+        encoding="utf-8",
+    )
+
+    runner.invoke(app, ["init", "--local"], input="\n\n\n")
+
+    assert config_module.load_config()["workflow"]["stale_after_days"] == "21"
+
+
 def test_init_writes_to_home_by_default(sandbox):
     runner.invoke(app, ["init"], input="https://home.example.com/p\n\n\n")
 

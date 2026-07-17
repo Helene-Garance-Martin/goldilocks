@@ -196,7 +196,7 @@ FUN_TRIGGERS = ["rags to dags", "boucles d'or", "curls", "just right"]
 # MAIN AGENT FUNCTION
 # ------------------------------------------------------------
 
-def ask_goldilocks(question: str) -> str:
+def ask_goldilocks(question: str, graph_checked: bool = False) -> str:
     """
     Ask Goldilocks a natural language question about your pipelines.
     
@@ -233,17 +233,15 @@ def ask_goldilocks(question: str) -> str:
             with driver.session() as session:
 
                 # ── Empty graph guard ──────────────────────
-                total = session.run("MATCH (n) RETURN count(n) AS total").single()["total"]
-                if total == 0:
-                    return (
-                        "⚠️  Your graph is empty!\n\n"
-                        "💡 Run the flow first:\n"
-                        "   goldilocks fetch\n"
-                        "   goldilocks sanitise\n"
-                        "   goldilocks anonymise\n"
-                        "   goldilocks seed"
-                    )
-                
+                if not graph_checked:
+                    from goldilocks_cli.core.state import read_graph_state
+                    graph_state = read_graph_state(session)
+                    if int(graph_state.get("pipeline_count") or 0) == 0:
+                        return (
+                            "🌾 The graph has not been seeded yet.\n\n"
+                            "Next: goldilocks seed"
+                        )
+
                 # ── Generate Cypher ────────────────────────
                 cypher = generate_cypher(question, GRAPH_SCHEMA)
                 print(f"\n🔍 Generated query: {cypher}\n")

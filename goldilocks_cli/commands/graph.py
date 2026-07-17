@@ -125,14 +125,13 @@ def show_graph(
 
         with GraphDatabase.driver(uri, auth=(user, password)) as driver:
             with driver.session() as session:
-                total = session.run(
-                    "MATCH (p:Pipeline) RETURN count(p) AS total"
-                ).single()["total"]
+                from goldilocks_cli.core.state import read_graph_state
+                graph_state = read_graph_state(session)
 
-                if total == 0:
-                    typer.echo(f"{GOLD}⚠️  Your graph is empty!{RESET}")
-                    typer.echo("💡 Run: goldilocks seed --uri your-uri")
-                    raise typer.Exit(0)
+                if int(graph_state.get("pipeline_count") or 0) == 0:
+                    typer.echo(f"{GOLD}🌾 The graph has not been seeded yet.{RESET}")
+                    typer.echo("   Next: goldilocks seed\n")
+                    raise typer.Exit(1)
 
                 families_result = session.run("""
                     MATCH (parent:Pipeline)-[:CALLS]->(child:Pipeline)
@@ -337,6 +336,9 @@ def show_graph(
     except CredentialMissing as e:
         typer.echo(f"{RED}{e}{RESET}\n")
         raise typer.Exit(1)
+
+    except typer.Exit:
+        raise
 
     except Exception as e:
         typer.echo(f"{RED}❌ Failed: {e}{RESET}\n")
