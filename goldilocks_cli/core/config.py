@@ -29,6 +29,9 @@ DEFAULTS: Dict[str, Dict[str, str]] = {
         "sensitive_orgs": "sensitive_orgs.txt",
         "exports_dir": "pipeline_exports",
     },
+    "workflow": {
+        "stale_after_days": "7",
+    },
 }
 
 

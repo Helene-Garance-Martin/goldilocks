@@ -38,6 +38,13 @@ import re
 import secrets
 from pathlib import Path
 
+from goldilocks_cli.core.state import (
+    atomic_write_json,
+    atomic_write_text,
+    embed_file_state,
+    text_without_file_state,
+)
+
 # ---------------------------------------------------------------------------
 # SENSITIVE ORGS — do NOT add names here (this file is public AND packaged).
 # Names load from outside the package so they can never end up in a wheel:
@@ -273,6 +280,8 @@ def scan_for_leaks(text: str) -> dict:
     """
     findings: dict[str, list[str]] = {}
 
+    text = text_without_file_state(text)
+
     urls = [u for u in URL_PATTERN.findall(text) if not is_fake_url(u)]
     if urls:
         findings["urls"] = sorted(set(urls))[:10]
@@ -309,6 +318,7 @@ def anonymise_pipeline(
     input_path: str,
     output_path: str,
     on_progress: callable = None,
+    source_file: str | None = None,
 ) -> dict:
     """Main function — reads, scrubs, writes, then leak-scans the result.
 
@@ -344,7 +354,7 @@ def anonymise_pipeline(
         # layer warns the user (summary carries fallback=True).
         raw = input_file.read_text(encoding="utf-8")
         raw = anonymise_text(raw, lookups)
-        output_file.write_text(raw, encoding="utf-8")
+        atomic_write_text(output_file, raw)
         findings = scan_for_leaks(raw)
         return _summary(lookups, findings, output_path, fallback=True)
 
@@ -364,9 +374,15 @@ def anonymise_pipeline(
     if on_progress:
         on_progress("anonymising", 2, 2, "organisations, URLs & emails")
 
-    output_file.write_text(clean, encoding="utf-8")
+    clean_data = json.loads(clean)
+    clean_data = embed_file_state(
+        clean_data,
+        source_file or input_file.name,
+    )
+    atomic_write_json(output_file, clean_data)
+    final_text = output_file.read_text(encoding="utf-8")
 
-    findings = scan_for_leaks(clean)
+    findings = scan_for_leaks(final_text)
     return _summary(lookups, findings, output_path, fallback=False)
 
 

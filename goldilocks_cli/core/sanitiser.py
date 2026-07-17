@@ -8,6 +8,8 @@
 import json
 from pathlib import Path
 
+from goldilocks_cli.core.state import atomic_write_json
+
 
 # ------------------------------------------------------------
 # WHAT WE KEEP — the essential fields per pipeline
@@ -239,9 +241,7 @@ def sanitise_export(
         if on_progress:
             on_progress("sanitising", 1, 1, "done")
 
-    output_file.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_file, 'w', encoding='utf-8') as f:
-        json.dump(clean_data, f, indent=2)
+    atomic_write_json(output_file, clean_data)
 
     original_size = input_file.stat().st_size
     clean_size    = output_file.stat().st_size

@@ -289,9 +289,14 @@ def test_runs_are_independent_and_reproducible(clean_anonymiser, export_file, tm
 
     _, second, s2 = run_anonymise(clean_anonymiser, clean, tmp_path, name="a2.json")
 
-    # credential tokens are random per run, so compare with them masked
-    mask = lambda t: re.sub(r"token_[0-9a-f]{8}", "token_X", t)
-    assert mask(first) == mask(second)
+    # credential tokens and provenance timestamps vary per run, so
+    # compare the anonymised payload with those run-specific values removed.
+    def comparable(text):
+        data = json.loads(re.sub(r"token_[0-9a-f]{8}", "token_X", text))
+        data.pop("_goldilocks", None)
+        return data
+
+    assert comparable(first) == comparable(second)
     assert (s1["orgs"], s1["urls"], s1["emails"]) == (s2["orgs"], s2["urls"], s2["emails"])
 
 
@@ -400,3 +405,12 @@ def test_missing_input_raises(clean_anonymiser, tmp_path):
     with pytest.raises(FileNotFoundError):
         clean_anonymiser.anonymise_pipeline(str(tmp_path / "missing.json"), str(out))
     assert not out.exists()
+
+def test_anonymised_output_carries_sieved_marker(clean_anonymiser, export_file, tmp_path):
+    clean = sanitised_file(export_file, tmp_path)
+    out, text, _ = run_anonymise(clean_anonymiser, clean, tmp_path)
+    marker = json.loads(text)["_goldilocks"]
+    assert marker["stage"] == "sieved"
+    assert marker["source_file"] == clean.name
+    assert marker["schema_version"] == 1
+    assert out.exists()

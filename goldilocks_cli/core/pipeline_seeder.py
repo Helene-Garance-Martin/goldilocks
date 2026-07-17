@@ -16,6 +16,7 @@ import json
 from pathlib import Path
 from neo4j import GraphDatabase
 from goldilocks_cli.core.snap_resolver import resolve_snap_type
+from goldilocks_cli.core.state import read_file_state, write_graph_state
 
 
 
@@ -282,6 +283,8 @@ def main():
     with open(export_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
+    file_state = read_file_state(export_path) or {}
+
     # Handle project export (entries[]) or single pipeline
     pipelines = data.get("entries", [data])
     print(f"📦 Found {len(pipelines)} pipeline(s) to seed\n")
@@ -313,6 +316,12 @@ def main():
             print()
 
             total = session.execute_read(count_nodes)
+            session.execute_write(
+                write_graph_state,
+                source_file=export_path.name,
+                pipeline_count=len(pipelines),
+                source_sieved_at=file_state.get("sieved_at"),
+            )
 
     # Final summary
     print("=" * 50)

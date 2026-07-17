@@ -51,6 +51,7 @@ def test_load_config_defaults_when_no_files(sandbox):
     assert config["snaplogic"]["url"] == ""
     assert config["paths"]["sensitive_orgs"] == "sensitive_orgs.txt"
     assert config["paths"]["exports_dir"] == "pipeline_exports"
+    assert config["workflow"]["stale_after_days"] == "7"
 
 
 def test_load_config_reads_home_config(sandbox):
@@ -89,6 +90,7 @@ def test_dumps_toml_roundtrips(sandbox):
     original = {
         "snaplogic": {"url": "https://elastic.example.com/sl/x"},
         "paths": {"sensitive_orgs": "secrets/orgs.txt", "exports_dir": "out"},
+        "workflow": {"stale_after_days": "14"},
     }
     path = config_module.save_config(original, sandbox["work"] / "goldilocks.toml")
 
