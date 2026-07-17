@@ -90,6 +90,30 @@ This allows hidden dependencies to become visible before they are formally conne
 
 ---
 
+## 🌾 Visualising large projects
+
+Goldilocks measures every Mermaid view before rendering it. Small pipelines
+remain fully expanded. From 50 nodes, safe linear chains collapse automatically
+while branches, joins, error paths, pipeline calls, external I/O, scripts,
+triggers, and other significant snaps stay visible.
+
+```bash
+goldilocks visualise "My Pipeline"
+goldilocks visualise "My Pipeline" --collapse
+goldilocks visualise "My Pipeline" --no-collapse
+goldilocks visualise --source json --input export_anonymised.json --single
+goldilocks visualise --source json --input export_anonymised.json --combined
+```
+
+For project exports containing more than 15 pipelines, the default output is:
+
+- one diagram per pipeline
+- one pipeline index containing pipeline nodes and `CALLS` edges only
+- no combined all-snaps mega-diagram unless `--combined` is requested
+
+Views that remain at or above 300 visual nodes are skipped warmly rather than
+being handed to Mermaid as an unreadable or fragile render.
+
 ## 🧭 Current status
 
 Goldilocks is currently experimental and focused on:
@@ -104,10 +128,10 @@ Current graph modelling includes:
 
 - `HAS_SNAP`
 - `CONNECTS_TO`
+- `CALLS`
 
 Future relationship modelling may include:
 
-- `CALLS`
 - dependency relationships
 - sibling pipeline discovery
 - migration topology
