@@ -11,21 +11,9 @@ import sys
 import os
 
 from goldilocks_cli.core.models import Snap, Pipeline, Link
-from goldilocks_cli.core.snap_resolver import resolve_snap_type
+from goldilocks_cli.core.snap_resolver import resolve_snap_type, snap_wipes_context
 from goldilocks_cli.core.renderer import render_diagram
 from goldilocks_cli.core.diagram_builder import build_pipeline_diagram, safe_file_name
-
-# ------------------------------------------------------------
-# MEMORY WIPE SNAP TYPES
-# ------------------------------------------------------------
-
-WIPES_CONTEXT_TYPES = [
-    "httpclient",
-    "script",
-    "sftp_get",
-    "sftp_put",
-    "binarytodocument",
-]
 
 # ------------------------------------------------------------
 # SNAP MODEL BUILDER
@@ -46,7 +34,7 @@ def build_snap_model(snap_id: str, snap: dict) -> Snap:
         label         = label,
         snap_type     = snap_type,
         class_id      = class_id,
-        wipes_context = snap_type in WIPES_CONTEXT_TYPES
+        wipes_context = snap_wipes_context(snap_type, class_id)
     )
 
 

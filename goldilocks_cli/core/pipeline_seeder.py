@@ -15,7 +15,7 @@ import os
 import json
 from pathlib import Path
 from neo4j import GraphDatabase
-from goldilocks_cli.core.snap_resolver import resolve_snap_type
+from goldilocks_cli.core.snap_resolver import resolve_snap_type, snap_wipes_context
 from goldilocks_cli.core.state import read_file_state, write_graph_state
 
 
@@ -70,7 +70,7 @@ def build_snap(pipeline_id: str, snap_id: str, snap: dict) -> dict:
         "class_id":       class_id,
         "error":          error,
         "child_pipeline": child_pipeline,
-        "wipes_context":  snap_type in ["httpclient", "script", "sftp_get", "sftp_put", "binarytodocument"],
+        "wipes_context":  snap_wipes_context(snap_type, class_id),
     }
 
 # ------------------------------------------------------------
