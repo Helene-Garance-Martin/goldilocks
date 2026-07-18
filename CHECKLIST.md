@@ -90,3 +90,65 @@ Rule of thumb: everything in **Must fix** blocks the public release; **Nice to f
 - [ ] All "pinned bug" tests flipped to assert the fixed behaviour — `grep -rn "PINS CURRENT BEHAVIOUR" tests/` returns only entries you've consciously decided to keep as documented contracts.
 - [ ] Fresh-venv install test (item 11) green.
 - [ ] Run your own anonymiser on a real export, then run the item-7 file audit on the result and read it with adversarial eyes for ten minutes. If it's boring, ship.
+
+## Security audit follow-up (2026-07-18)
+
+- [x] **F1 — archive extraction hardened.** `core/archive.py` added; both
+      extraction sites now refuse escaping members explicitly.
+      **Severity corrected:** the original HIGH was overstated. CPython's
+      `extractall()` already sanitises member names, so the `fetch`
+      command was NOT exploitable. The genuine escape was the hand-built
+      `Path(dest) / member` in `fetch_and_save` (an absolute member
+      replaces the destination) — reachable only via that module's own
+      `__main__`, not the CLI. Real severity: LOW-MEDIUM, not a release
+      blocker. Guard kept for defence in depth and honest refusal.
+- [x] **F2 — fetch timeouts.** `REQUEST_TIMEOUT_SECONDS = 30` applied to
+      both request sites; `requests.Timeout` / `ConnectionError` now fail
+      warm with a next step, no raw detail.
+- [x] **F3 — warm failure descriptions.** `core/errors.py` added.
+      Driver/SDK exceptions no longer reach the user raw — no host, no
+      path, no credential. Raw detail behind `GOLDILOCKS_DEBUG=1`.
+      Applied in `agent.ask_goldilocks` and both handlers in `ask`.
+- [x] **BONUS — `typer.Exit` swallowed in fetch.** `typer.Exit` subclasses
+      `Exception`, so the blanket handler caught deliberate exits and
+      re-reported them as "❌ Fetch failed: 1". Now re-raised first.
+
+Suite: 235 → **283 passed, 3 skipped**.
+Still open from the audit: F0 (workplace artefacts in docs/ + history
+purge before public tag), F4–F7 (cosmetics, fold into item 22).
+
+### F4–F7 (same day, corrected classification)
+
+The original audit grouped these as "all cosmetic, fold into item 22".
+On inspection three of the four were not cosmetic:
+
+- [x] **F7 — `config_example.py` deleted.** Not a hostname to genericise:
+      nothing referenced the file, and it documented a `config_real.py`
+      mechanism superseded by `.env` + `goldilocks.toml`. A new user
+      following it would create a file nothing reads. Journey defect.
+- [x] **F6 — fun triggers were misrouting.** Substring matching sent
+      "how do I install goldilocks-curls?" and "is this sizing just right
+      for prod?" to the playful path — and spent a temperature-1.0
+      Anthropic call doing it. Now `is_fun_trigger()` fires only when the
+      phrase is essentially the whole question (≤2 words of framing).
+      "curls" retired (it's the package name); "boucles d'or" kept.
+- [x] **F5 — egress notice.** `ask` now states plainly which path it took:
+      "Reading your local export — nothing leaves this machine" vs
+      "Thinking — sending anonymised graph results to Anthropic". For a
+      tool that sieves data so it *can* be shared, saying when it actually
+      is matters. Docs equivalent still owed in item 27.
+- [x] **F4 — Cypher transparency promoted, not tidied away.** The core
+      print became an `on_query` callback (same design language as
+      `on_progress`); the command layer renders it. Core is silent,
+      the user still sees exactly what was asked of their database.
+      `describer`'s only print is inside its `__main__` entry — legitimate,
+      left alone.
+
+**Deliberately NOT changed — product decision, for the UX audit:**
+`ask` routes to its local file path whenever the question contains
+"token", "risk", "wipes", "credential" or "bearer". So "which pipelines
+are at risk?" silently skips the graph and reads
+`export_anonymised.json`. Same bug class as F6, but the right fix is a
+routing design question, not a patch.
+
+Suite: 283 → **299 passed, 3 skipped**.

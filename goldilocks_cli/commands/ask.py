@@ -52,8 +52,8 @@ def ask(
             typer.echo(f"{RED}{e}{RESET}\n")
             raise typer.Exit(1)
         except Exception as e:
-            typer.echo(f"{RED}❌ Neo4j is unavailable: {e}{RESET}")
-            typer.echo("   Next: goldilocks doctor\n")
+            from goldilocks_cli.core.errors import friendly_error
+            typer.echo(f"{RED}{friendly_error(e)}{RESET}\n")
             raise typer.Exit(1)
 
         if int(graph_state.get("pipeline_count") or 0) == 0:
@@ -61,7 +61,18 @@ def ask(
             typer.echo("   Next: goldilocks seed\n")
             raise typer.Exit(1)
 
-    typer.echo(f"{CYAN}🤖 Thinking...{RESET}\n")
+    # Goldilocks sieves data so it CAN be shared — which makes it all
+    # the more important to say when it actually is. The local path
+    # touches nothing but the file on disk; the agent path sends
+    # anonymised graph results to Anthropic.
+    if local_token_query:
+        typer.echo(
+            f"{CYAN}🤖 Reading your local export — nothing leaves this machine.{RESET}\n"
+        )
+    else:
+        typer.echo(
+            f"{CYAN}🤖 Thinking — sending anonymised graph results to Anthropic.{RESET}\n"
+        )
 
     # ── Token risk queries (local — no Neo4j needed) ──────
     if local_token_query:
@@ -88,7 +99,14 @@ def ask(
     try:
         with console.status("[magenta]Consulting the graph...[/magenta]", spinner="dots"):
             from goldilocks_cli.core.agent import ask_goldilocks
-            answer = ask_goldilocks(question, graph_checked=True)
+            answer = ask_goldilocks(
+                question,
+                graph_checked=True,
+                # transparency: show what was actually asked of the graph
+                on_query=lambda cypher: typer.echo(
+                    f"{GOLD}🔍 Generated query:{RESET} {cypher}\n"
+                ),
+            )
 
         typer.echo(answer)
         typer.echo("")
@@ -98,5 +116,6 @@ def ask(
         raise typer.Exit(1)
 
     except Exception as e:
-        typer.echo(f"{RED}❌ Failed to answer question: {e}{RESET}\n")
+        from goldilocks_cli.core.errors import friendly_error
+        typer.echo(f"{RED}{friendly_error(e)}{RESET}\n")
         raise typer.Exit(1)

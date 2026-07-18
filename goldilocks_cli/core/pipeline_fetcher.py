@@ -12,11 +12,26 @@ import io
 from pathlib import Path
 from requests.auth import HTTPBasicAuth
 
+from goldilocks_cli.core.archive import safe_extract
+
+# ------------------------------------------------------------
+# Network
+# ------------------------------------------------------------
+
+# requests defaults to waiting forever; a hung pod should fail,
+# not hang a terminal behind a spinner.
+REQUEST_TIMEOUT_SECONDS = 30
+
 # ------------------------------------------------------------
 # Lambda functions — small, reusable transformation steps
 # ------------------------------------------------------------
 
-fetch_export   = lambda url, auth: requests.get(url, params={"asset_types": "Pipeline"}, auth=auth)
+fetch_export   = lambda url, auth: requests.get(
+    url,
+    params={"asset_types": "Pipeline"},
+    auth=auth,
+    timeout=REQUEST_TIMEOUT_SECONDS,
+)
 is_success     = lambda r: r.status_code == 200
 is_zip         = lambda r: "zip" in r.headers.get("Content-Type", "")
 unzip_response = lambda r: zipfile.ZipFile(io.BytesIO(r.content))
@@ -54,17 +69,11 @@ def fetch_and_save(url, username, password, output_dir):
     z = unzip_response(response)
     print(f"📦 Files inside zip: {z.namelist()}")
 
-    for filename in z.namelist():
-        path = Path(output_dir) / filename
-        # Ensure nested folders from the ZIP exist before saving
-        # Example:
-        #   pipeline_exports/project-a/my_pipeline.json
-        # Without this, write_text() would fail if parent folders don't exist.
-        path.parent.mkdir(parents=True, exist_ok=True)
-
-        # Decode file from ZIP and save locally as UTF-8 text
-        save_file(path, decode_file(z, filename))
-        print(f"✅ Saved: {filename}")
+    # safe_extract refuses any member that would land outside
+    # output_dir (see core/archive.py) and creates nested folders
+    # for the ones that are legitimate.
+    for path in safe_extract(z, Path(output_dir)):
+        print(f"✅ Saved: {path.name}")
 
     print(f"\n🫧 Done! Files saved to: {output_dir}")
 

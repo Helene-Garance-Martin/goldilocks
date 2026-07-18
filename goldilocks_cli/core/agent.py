@@ -190,13 +190,55 @@ Important notes:
 # FUN TRIGGERS — temperature 1.0 (creative!)
 # ------------------------------------------------------------
 
-FUN_TRIGGERS = ["rags to dags", "boucles d'or", "curls", "just right"]
+# Easter eggs, not keywords. They fire only when the phrase is
+# essentially the whole question — "rags to dags?" yes, "how do I
+# install goldilocks-curls?" no. Substring matching used to send
+# legitimate questions down the playful path AND spend an Anthropic
+# call doing it. "curls" was retired when it became the package name.
+FUN_TRIGGERS = ["rags to dags", "boucles d'or", "just right"]
+
+_PUNCTUATION = "?!.,;:'\"’‘“”-–—()[]"
+
+
+def _normalise(text: str) -> str:
+    """Lowercase, strip punctuation, collapse whitespace."""
+    lowered = text.lower()
+    stripped = "".join(" " if ch in _PUNCTUATION else ch for ch in lowered)
+    return " ".join(stripped.split())
+
+
+def is_fun_trigger(question: str) -> bool:
+    """True when the question is (essentially) just an easter egg.
+
+    Allows a little politeness around the phrase — "hey, rags to
+    dags!" — but not a real question that happens to contain it.
+    """
+    normalised = _normalise(question)
+    if not normalised:
+        return False
+
+    for trigger in FUN_TRIGGERS:
+        trigger_words = _normalise(trigger).split()
+        if not trigger_words:
+            continue
+        phrase = " ".join(trigger_words)
+        if phrase not in normalised:
+            continue
+        # the question may carry at most two extra words of framing
+        if len(normalised.split()) <= len(trigger_words) + 2:
+            return True
+
+    return False
 
 # ------------------------------------------------------------
 # MAIN AGENT FUNCTION
 # ------------------------------------------------------------
 
-def ask_goldilocks(question: str, graph_checked: bool = False) -> str:
+def ask_goldilocks(
+    question: str,
+    graph_checked: bool = False,
+    on_query: callable = None,
+) -> str:
     """
     Ask Goldilocks a natural language question about your pipelines.
     
@@ -205,10 +247,15 @@ def ask_goldilocks(question: str, graph_checked: bool = False) -> str:
     2. Generate Cypher from question (temperature 0.1)
     3. Run Cypher against Neo4j safely
     4. Explain results in plain English (temperature 0.5)
+
+    on_progress-style callback: on_query(cypher) fires with the
+    generated Cypher before it runs, so the command layer can show
+    the user exactly what was asked of their database. Core stays
+    silent; the transparency is the caller's to render.
     """
 
     # ── Fun triggers ───────────────────────────────────────
-    if any(trigger in question.lower() for trigger in FUN_TRIGGERS):
+    if is_fun_trigger(question):
         response = _get_client().messages.create(
             model="claude-sonnet-4-6",
             max_tokens=200,
@@ -244,7 +291,8 @@ def ask_goldilocks(question: str, graph_checked: bool = False) -> str:
 
                 # ── Generate Cypher ────────────────────────
                 cypher = generate_cypher(question, GRAPH_SCHEMA)
-                print(f"\n🔍 Generated query: {cypher}\n")
+                if on_query:
+                    on_query(cypher)
 
                 # ── Validate and run safely ────────────────
                 validate_query(cypher)
@@ -264,4 +312,7 @@ def ask_goldilocks(question: str, graph_checked: bool = False) -> str:
                 return explain_results(question, results)
 
     except Exception as e:
-        return f"❌ {e}"
+        # Driver errors carry hosts and internal detail — describe the
+        # failure warmly instead, raw text behind GOLDILOCKS_DEBUG.
+        from goldilocks_cli.core.errors import friendly_error
+        return friendly_error(e)
