@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "goldilocks-curls"
-version = "0.2.0"
+version = "1.0.0"
 description = "Semantic topology for integration pipelines"
 readme = "README.md"
 requires-python = ">=3.10"
