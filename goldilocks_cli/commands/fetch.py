@@ -115,10 +115,8 @@ def fetch(
         typer.echo(f"{GOLD}   JSON ready: {export_json}{RESET}")
         typer.echo("")
         typer.echo(f"{CYAN}Next steps:{RESET}")
-        typer.echo(f"  1. goldilocks sanitise --input {export_json} --output export_clean.json")
-        typer.echo(f"  2. goldilocks anonymise --input export_clean.json --output export_anonymised.json")
-        typer.echo(f"  3. goldilocks seed --uri your-neo4j-uri")
-        typer.echo(f"  4. goldilocks visualise --input export_anonymised.json")
+        typer.echo(f"  1. goldilocks sieve --input {export_json}")
+        typer.echo(f"  2. goldilocks status")
 
     except typer.Exit:
         # Deliberate exits already printed their own warm message —
