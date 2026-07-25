@@ -32,6 +32,7 @@ from goldilocks_cli.commands.sieve import sieve
 from goldilocks_cli.commands.inspect_export import inspect_export
 from goldilocks_cli.commands.init import init
 from goldilocks_cli.commands.status import status
+from goldilocks_cli.commands.demo import demo
 
 
 
@@ -159,6 +160,8 @@ app.command(name="show-graph")(show_graph)
 app.command()(stats)
 
 app.command("inspect-export")(inspect_export)
+
+app.command()(demo)
 
 
 # ------------------------------------------------------------
