@@ -1,6 +1,9 @@
 # Goldilocks
 
+*From DAGs to riches* 💅
+
 **Introspect SnapLogic pipelines. Build a graph. Ask questions of it.**
+
 
 Goldilocks is a command-line tool that reads your SnapLogic estate, maps how pipelines connect, and lets you query and visualise that structure locally, on your own machine. It turns a sprawl of pipeline definitions into a traversable graph you can actually reason about.
 
